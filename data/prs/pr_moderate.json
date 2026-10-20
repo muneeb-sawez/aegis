@@ -1,0 +1,21 @@
+{
+  "id": "PR-055",
+  "title": "feat(recommendation): expand recommendation attributes",
+  "target_service": "recommendationservice",
+  "author": "diana@company.com",
+  "description": "Updates recommendations schema with new product fields.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "product_ids": {"type": "array"}
+    }
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "product_ids": {"type": "array"},
+      "scores": {"type": "array"}
+    }
+  },
+  "proposed_edges": []
+}

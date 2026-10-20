@@ -1,0 +1,152 @@
+/* AEGIS Mission Control Design System (Dark Glassmorphism) */
+
+:root {
+  --bg-main: #060a12;
+  --bg-sidebar: #080d18;
+  --bg-card: rgba(13, 20, 36, 0.75);
+  --bg-card-hover: rgba(19, 29, 53, 0.9);
+  --border-subtle: #1e293b;
+  --border-focus: #38bdf8;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --color-critical: #f97316;
+  --color-critical-glow: rgba(249, 115, 22, 0.35);
+  --color-danger: #ef4444;
+  --color-cyan: #38bdf8;
+  --color-cyan-glow: rgba(56, 189, 248, 0.25);
+  --color-emerald: #10b981;
+  --color-purple: #a855f7;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html, #root {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(10, 16, 28, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.glass-pill {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+
+/* Glowing Critical Accents */
+.critical-border {
+  border: 1.5px solid var(--color-critical) !important;
+  box-shadow: 0 0 16px var(--color-critical-glow), inset 0 0 12px rgba(249, 115, 22, 0.1) !important;
+}
+
+.cyan-border {
+  border: 1px solid #0284c7 !important;
+  box-shadow: 0 0 14px var(--color-cyan-glow) !important;
+}
+
+/* React Flow Canvas Overrides */
+.react-flow__background {
+  background-color: var(--bg-main) !important;
+}
+
+.react-flow__edge-path {
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
+}
+
+/* Critical Glowing Edges */
+.edge-critical {
+  stroke: #f97316 !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 0 5px #f97316);
+  animation: pulse-edge 2s infinite ease-in-out;
+}
+
+.edge-dependency {
+  stroke: #334155 !important;
+  stroke-width: 1.6px !important;
+}
+
+.edge-containment {
+  stroke: #475569 !important;
+  stroke-dasharray: 4 4 !important;
+  stroke-width: 1.4px !important;
+}
+
+@keyframes pulse-edge {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px #f97316);
+  }
+  50% {
+    filter: drop-shadow(0 0 9px #ea580c);
+  }
+}
+
+/* Pulsing Badge Indicator */
+.pulse-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px #ef4444; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* MiniMap Theme */
+.react-flow__minimap {
+  background-color: rgba(9, 14, 24, 0.85) !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__minimap-node {
+  fill: #1e293b !important;
+}

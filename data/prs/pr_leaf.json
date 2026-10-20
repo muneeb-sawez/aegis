@@ -1,0 +1,23 @@
+{
+  "id": "PR-021",
+  "title": "chore(email): update email template footer",
+  "target_service": "emailservice",
+  "author": "eve@company.com",
+  "description": "Updates email notification formatting. Low-risk leaf service change.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "recipient": {"type": "string"},
+      "body": {"type": "string"}
+    }
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "recipient": {"type": "string"},
+      "body": {"type": "string"},
+      "footer": {"type": "string"}
+    }
+  },
+  "proposed_edges": []
+}

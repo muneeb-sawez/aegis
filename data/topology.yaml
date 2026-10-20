@@ -1,0 +1,1376 @@
+nodes:
+- id: frontend
+  label: Service
+  properties:
+    name: Frontend Web Gateway
+    baseline_p99_ms: 35.0
+    p99_ms: 35.0
+    error_rate: 0.002
+    status: healthy
+    tier: presentation
+- id: checkoutservice
+  label: Service
+  properties:
+    name: Checkout Service
+    baseline_p99_ms: 45.0
+    p99_ms: 45.0
+    error_rate: 0.005
+    status: healthy
+    tier: core
+- id: orderservice
+  label: Service
+  properties:
+    name: Order Processing Service
+    baseline_p99_ms: 50.0
+    p99_ms: 50.0
+    error_rate: 0.003
+    status: healthy
+    tier: core
+- id: paymentservice
+  label: Service
+  properties:
+    name: Payment Gateway Service
+    baseline_p99_ms: 38.0
+    p99_ms: 38.0
+    error_rate: 0.001
+    status: healthy
+    tier: critical
+- id: emailservice
+  label: Service
+  properties:
+    name: Email Notification Service
+    baseline_p99_ms: 25.0
+    p99_ms: 25.0
+    error_rate: 0.001
+    status: healthy
+    tier: utility
+- id: shippingservice
+  label: Service
+  properties:
+    name: Shipping & Fulfillment Service
+    baseline_p99_ms: 40.0
+    p99_ms: 40.0
+    error_rate: 0.002
+    status: healthy
+    tier: core
+- id: cartservice
+  label: Service
+  properties:
+    name: Shopping Cart Service
+    baseline_p99_ms: 20.0
+    p99_ms: 20.0
+    error_rate: 0.001
+    status: healthy
+    tier: core
+- id: recommendationservice
+  label: Service
+  properties:
+    name: Product Recommendation Service
+    baseline_p99_ms: 30.0
+    p99_ms: 30.0
+    error_rate: 0.004
+    status: healthy
+    tier: support
+- id: postgres-payment
+  label: Database
+  properties:
+    name: PostgreSQL Payment DB
+    engine: postgresql
+    baseline_p99_ms: 5.0
+    p99_ms: 5.0
+    connections: 25
+    pool_size: 100
+    status: healthy
+- id: postgres-order
+  label: Database
+  properties:
+    name: PostgreSQL Orders DB
+    engine: postgresql
+    baseline_p99_ms: 6.0
+    p99_ms: 6.0
+    connections: 30
+    pool_size: 100
+    status: healthy
+- id: redis-cart
+  label: Database
+  properties:
+    name: Redis Cart Cache
+    engine: redis
+    baseline_p99_ms: 1.5
+    p99_ms: 1.5
+    connections: 15
+    pool_size: 200
+    status: healthy
+- id: redis-cache
+  label: Database
+  properties:
+    name: Redis Product Cache
+    engine: redis
+    baseline_p99_ms: 1.2
+    p99_ms: 1.2
+    connections: 12
+    pool_size: 200
+    status: healthy
+- id: mongodb-shipping
+  label: Database
+  properties:
+    name: MongoDB Shipping DB
+    engine: mongodb
+    baseline_p99_ms: 8.0
+    p99_ms: 8.0
+    connections: 18
+    pool_size: 150
+    status: healthy
+- id: kafka-cluster
+  label: Database
+  properties:
+    name: Kafka Event Bus (Demo Node)
+    engine: kafka
+    baseline_p99_ms: 10.0
+    p99_ms: 10.0
+    connections: 40
+    pool_size: 500
+    status: healthy
+- id: frontend-pod-1
+  label: Pod
+  properties:
+    name: frontend worker instance 1
+    service_id: frontend
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 35.0
+    p99_ms: 35.0
+- id: frontend-pod-2
+  label: Pod
+  properties:
+    name: frontend worker instance 2
+    service_id: frontend
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 35.0
+    p99_ms: 35.0
+- id: checkoutservice-pod-1
+  label: Pod
+  properties:
+    name: checkoutservice worker instance 1
+    service_id: checkoutservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 45.0
+    p99_ms: 45.0
+- id: checkoutservice-pod-2
+  label: Pod
+  properties:
+    name: checkoutservice worker instance 2
+    service_id: checkoutservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 45.0
+    p99_ms: 45.0
+- id: orderservice-pod-1
+  label: Pod
+  properties:
+    name: orderservice worker instance 1
+    service_id: orderservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 50.0
+    p99_ms: 50.0
+- id: orderservice-pod-2
+  label: Pod
+  properties:
+    name: orderservice worker instance 2
+    service_id: orderservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 50.0
+    p99_ms: 50.0
+- id: paymentservice-pod-1
+  label: Pod
+  properties:
+    name: paymentservice worker instance 1
+    service_id: paymentservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 38.0
+    p99_ms: 38.0
+- id: paymentservice-pod-2
+  label: Pod
+  properties:
+    name: paymentservice worker instance 2
+    service_id: paymentservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 38.0
+    p99_ms: 38.0
+- id: emailservice-pod-1
+  label: Pod
+  properties:
+    name: emailservice worker instance 1
+    service_id: emailservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 25.0
+    p99_ms: 25.0
+- id: emailservice-pod-2
+  label: Pod
+  properties:
+    name: emailservice worker instance 2
+    service_id: emailservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 25.0
+    p99_ms: 25.0
+- id: shippingservice-pod-1
+  label: Pod
+  properties:
+    name: shippingservice worker instance 1
+    service_id: shippingservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 40.0
+    p99_ms: 40.0
+- id: shippingservice-pod-2
+  label: Pod
+  properties:
+    name: shippingservice worker instance 2
+    service_id: shippingservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 40.0
+    p99_ms: 40.0
+- id: cartservice-pod-1
+  label: Pod
+  properties:
+    name: cartservice worker instance 1
+    service_id: cartservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 20.0
+    p99_ms: 20.0
+- id: cartservice-pod-2
+  label: Pod
+  properties:
+    name: cartservice worker instance 2
+    service_id: cartservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 20.0
+    p99_ms: 20.0
+- id: recommendationservice-pod-1
+  label: Pod
+  properties:
+    name: recommendationservice worker instance 1
+    service_id: recommendationservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 30.0
+    p99_ms: 30.0
+- id: recommendationservice-pod-2
+  label: Pod
+  properties:
+    name: recommendationservice worker instance 2
+    service_id: recommendationservice
+    status: Running
+    cpu_pct: 25.0
+    memory_mb: 256.0
+    baseline_p99_ms: 30.0
+    p99_ms: 30.0
+- id: frontend:get_index
+  label: APIEndpoint
+  properties:
+    name: get_index
+    service_id: frontend
+    path: /api/v1/get-index
+    method: GET
+    status: active
+- id: frontend:post_login
+  label: APIEndpoint
+  properties:
+    name: post_login
+    service_id: frontend
+    path: /api/v1/post-login
+    method: GET
+    status: active
+- id: frontend:get_cart_view
+  label: APIEndpoint
+  properties:
+    name: get_cart_view
+    service_id: frontend
+    path: /api/v1/get-cart-view
+    method: GET
+    status: active
+- id: checkoutservice:place_order
+  label: APIEndpoint
+  properties:
+    name: place_order
+    service_id: checkoutservice
+    path: /api/v1/place-order
+    method: POST
+    status: active
+- id: checkoutservice:get_checkout_status
+  label: APIEndpoint
+  properties:
+    name: get_checkout_status
+    service_id: checkoutservice
+    path: /api/v1/get-checkout-status
+    method: GET
+    status: active
+- id: checkoutservice:cancel_checkout
+  label: APIEndpoint
+  properties:
+    name: cancel_checkout
+    service_id: checkoutservice
+    path: /api/v1/cancel-checkout
+    method: GET
+    status: active
+- id: orderservice:create_order
+  label: APIEndpoint
+  properties:
+    name: create_order
+    service_id: orderservice
+    path: /api/v1/create-order
+    method: POST
+    status: active
+- id: orderservice:get_order
+  label: APIEndpoint
+  properties:
+    name: get_order
+    service_id: orderservice
+    path: /api/v1/get-order
+    method: GET
+    status: active
+- id: orderservice:list_orders
+  label: APIEndpoint
+  properties:
+    name: list_orders
+    service_id: orderservice
+    path: /api/v1/list-orders
+    method: GET
+    status: active
+- id: paymentservice:charge_card
+  label: APIEndpoint
+  properties:
+    name: charge_card
+    service_id: paymentservice
+    path: /api/v1/charge-card
+    method: POST
+    status: active
+- id: paymentservice:refund_card
+  label: APIEndpoint
+  properties:
+    name: refund_card
+    service_id: paymentservice
+    path: /api/v1/refund-card
+    method: POST
+    status: active
+- id: paymentservice:verify_token
+  label: APIEndpoint
+  properties:
+    name: verify_token
+    service_id: paymentservice
+    path: /api/v1/verify-token
+    method: GET
+    status: active
+- id: emailservice:send_order_confirmation
+  label: APIEndpoint
+  properties:
+    name: send_order_confirmation
+    service_id: emailservice
+    path: /api/v1/send-order-confirmation
+    method: POST
+    status: active
+- id: emailservice:send_shipping_update
+  label: APIEndpoint
+  properties:
+    name: send_shipping_update
+    service_id: emailservice
+    path: /api/v1/send-shipping-update
+    method: POST
+    status: active
+- id: emailservice:send_alert
+  label: APIEndpoint
+  properties:
+    name: send_alert
+    service_id: emailservice
+    path: /api/v1/send-alert
+    method: POST
+    status: active
+- id: shippingservice:ship_order
+  label: APIEndpoint
+  properties:
+    name: ship_order
+    service_id: shippingservice
+    path: /api/v1/ship-order
+    method: POST
+    status: active
+- id: shippingservice:track_package
+  label: APIEndpoint
+  properties:
+    name: track_package
+    service_id: shippingservice
+    path: /api/v1/track-package
+    method: GET
+    status: active
+- id: shippingservice:calculate_rates
+  label: APIEndpoint
+  properties:
+    name: calculate_rates
+    service_id: shippingservice
+    path: /api/v1/calculate-rates
+    method: GET
+    status: active
+- id: cartservice:get_items
+  label: APIEndpoint
+  properties:
+    name: get_items
+    service_id: cartservice
+    path: /api/v1/get-items
+    method: GET
+    status: active
+- id: cartservice:add_item
+  label: APIEndpoint
+  properties:
+    name: add_item
+    service_id: cartservice
+    path: /api/v1/add-item
+    method: POST
+    status: active
+- id: cartservice:empty_cart
+  label: APIEndpoint
+  properties:
+    name: empty_cart
+    service_id: cartservice
+    path: /api/v1/empty-cart
+    method: GET
+    status: active
+- id: recommendationservice:get_recommendations
+  label: APIEndpoint
+  properties:
+    name: get_recommendations
+    service_id: recommendationservice
+    path: /api/v1/get-recommendations
+    method: GET
+    status: active
+- id: recommendationservice:track_impression
+  label: APIEndpoint
+  properties:
+    name: track_impression
+    service_id: recommendationservice
+    path: /api/v1/track-impression
+    method: GET
+    status: active
+- id: recommendationservice:get_trending
+  label: APIEndpoint
+  properties:
+    name: get_trending
+    service_id: recommendationservice
+    path: /api/v1/get-trending
+    method: GET
+    status: active
+edges:
+- source: frontend-pod-1
+  target: frontend
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: frontend-pod-2
+  target: frontend
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: checkoutservice-pod-1
+  target: checkoutservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: checkoutservice-pod-2
+  target: checkoutservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: orderservice-pod-1
+  target: orderservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: orderservice-pod-2
+  target: orderservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: paymentservice-pod-1
+  target: paymentservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: paymentservice-pod-2
+  target: paymentservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: emailservice-pod-1
+  target: emailservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: emailservice-pod-2
+  target: emailservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: shippingservice-pod-1
+  target: shippingservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: shippingservice-pod-2
+  target: shippingservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: cartservice-pod-1
+  target: cartservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: cartservice-pod-2
+  target: cartservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: recommendationservice-pod-1
+  target: recommendationservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: recommendationservice-pod-2
+  target: recommendationservice
+  type: INSTANCE_OF
+  properties:
+    weight: 1.0
+- source: frontend
+  target: frontend:get_index
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: frontend
+  target: frontend:post_login
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: frontend
+  target: frontend:get_cart_view
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: checkoutservice
+  target: checkoutservice:place_order
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: checkoutservice
+  target: checkoutservice:get_checkout_status
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: checkoutservice
+  target: checkoutservice:cancel_checkout
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: orderservice
+  target: orderservice:create_order
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: orderservice
+  target: orderservice:get_order
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: orderservice
+  target: orderservice:list_orders
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: paymentservice
+  target: paymentservice:charge_card
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: paymentservice
+  target: paymentservice:refund_card
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: paymentservice
+  target: paymentservice:verify_token
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: emailservice
+  target: emailservice:send_order_confirmation
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: emailservice
+  target: emailservice:send_shipping_update
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: emailservice
+  target: emailservice:send_alert
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: shippingservice
+  target: shippingservice:ship_order
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: shippingservice
+  target: shippingservice:track_package
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: shippingservice
+  target: shippingservice:calculate_rates
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: cartservice
+  target: cartservice:get_items
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: cartservice
+  target: cartservice:add_item
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: cartservice
+  target: cartservice:empty_cart
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: recommendationservice
+  target: recommendationservice:get_recommendations
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: recommendationservice
+  target: recommendationservice:track_impression
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: recommendationservice
+  target: recommendationservice:get_trending
+  type: EXPOSES
+  properties:
+    protocol: HTTP/2
+- source: paymentservice
+  target: postgres-payment
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: orderservice
+  target: postgres-order
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: cartservice
+  target: redis-cart
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: recommendationservice
+  target: redis-cache
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: shippingservice
+  target: mongodb-shipping
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: checkoutservice
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: orderservice
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: emailservice
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    pool_limit: 100
+    confidence: 1.0
+- source: paymentservice-pod-1
+  target: postgres-payment
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: paymentservice-pod-2
+  target: postgres-payment
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: orderservice-pod-1
+  target: postgres-order
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: orderservice-pod-2
+  target: postgres-order
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: cartservice-pod-1
+  target: redis-cart
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: cartservice-pod-2
+  target: redis-cart
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: recommendationservice-pod-1
+  target: redis-cache
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: recommendationservice-pod-2
+  target: redis-cache
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: shippingservice-pod-1
+  target: mongodb-shipping
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: shippingservice-pod-2
+  target: mongodb-shipping
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: checkoutservice-pod-1
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: checkoutservice-pod-2
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: orderservice-pod-1
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: orderservice-pod-2
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: emailservice-pod-1
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: emailservice-pod-2
+  target: kafka-cluster
+  type: DEPENDS_ON
+  properties:
+    conns_active: 5
+    confidence: 1.0
+- source: frontend
+  target: checkoutservice
+  type: CALLS
+  properties:
+    latency_p99: 45.0
+    protocol: gRPC
+    confidence: 0.98
+- source: frontend
+  target: cartservice
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: gRPC
+    confidence: 0.98
+- source: frontend
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 30.0
+    protocol: gRPC
+    confidence: 0.98
+- source: checkoutservice
+  target: orderservice
+  type: CALLS
+  properties:
+    latency_p99: 50.0
+    protocol: gRPC
+    confidence: 0.98
+- source: checkoutservice
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 38.0
+    protocol: gRPC
+    confidence: 0.98
+- source: checkoutservice
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 40.0
+    protocol: gRPC
+    confidence: 0.98
+- source: checkoutservice
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 25.0
+    protocol: gRPC
+    confidence: 0.98
+- source: checkoutservice
+  target: cartservice
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: gRPC
+    confidence: 0.98
+- source: orderservice
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 38.0
+    protocol: gRPC
+    confidence: 0.98
+- source: orderservice
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 40.0
+    protocol: gRPC
+    confidence: 0.98
+- source: orderservice
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 25.0
+    protocol: gRPC
+    confidence: 0.98
+- source: cartservice
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 30.0
+    protocol: gRPC
+    confidence: 0.98
+- source: frontend-pod-1
+  target: checkoutservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-2
+  target: checkoutservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-1
+  target: cartservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-2
+  target: cartservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-1
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-2
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-1
+  target: orderservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-2
+  target: orderservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-1
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-2
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-1
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-2
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-1
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: checkoutservice-pod-2
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-1
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-2
+  target: paymentservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-1
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-2
+  target: shippingservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-1
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: orderservice-pod-2
+  target: emailservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: cartservice-pod-1
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: cartservice-pod-2
+  target: recommendationservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-1
+  target: orderservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend-pod-2
+  target: orderservice
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: gRPC
+    confidence: 0.95
+- source: frontend
+  target: checkoutservice:place_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: checkoutservice:get_checkout_status
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: cartservice:get_items
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: cartservice:add_item
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: recommendationservice:get_recommendations
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: recommendationservice:get_trending
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: orderservice:create_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: orderservice:get_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: paymentservice:charge_card
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: paymentservice:verify_token
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: shippingservice:ship_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: shippingservice:calculate_rates
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: emailservice:send_order_confirmation
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice
+  target: cartservice:empty_cart
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: paymentservice:charge_card
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: paymentservice:refund_card
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: shippingservice:ship_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: shippingservice:track_package
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: emailservice:send_order_confirmation
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: orderservice
+  target: emailservice:send_shipping_update
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: cartservice
+  target: recommendationservice:get_recommendations
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: orderservice:list_orders
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: frontend
+  target: shippingservice:track_package
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: emailservice
+  target: orderservice:get_order
+  type: CALLS
+  properties:
+    latency_p99: 35.0
+    protocol: HTTP/2
+    confidence: 0.96
+- source: checkoutservice:place_order
+  target: orderservice:create_order
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:place_order
+  target: paymentservice:charge_card
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:place_order
+  target: shippingservice:ship_order
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:place_order
+  target: emailservice:send_order_confirmation
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:place_order
+  target: cartservice:empty_cart
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: orderservice:create_order
+  target: paymentservice:charge_card
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: orderservice:create_order
+  target: shippingservice:ship_order
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: orderservice:create_order
+  target: emailservice:send_order_confirmation
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: orderservice:get_order
+  target: shippingservice:track_package
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: frontend:get_cart_view
+  target: cartservice:get_items
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: frontend:get_cart_view
+  target: recommendationservice:get_recommendations
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: frontend:post_login
+  target: cartservice:get_items
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: frontend:get_index
+  target: recommendationservice:get_trending
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: shippingservice:ship_order
+  target: emailservice:send_shipping_update
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: paymentservice:charge_card
+  target: paymentservice:verify_token
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:cancel_checkout
+  target: paymentservice:refund_card
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: checkoutservice:cancel_checkout
+  target: emailservice:send_alert
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99
+- source: orderservice:list_orders
+  target: orderservice:get_order
+  type: CALLS
+  properties:
+    latency_p99: 20.0
+    protocol: in-process/gRPC
+    confidence: 0.99

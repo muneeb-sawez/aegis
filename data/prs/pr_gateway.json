@@ -1,0 +1,21 @@
+{
+  "id": "PR-001",
+  "title": "feat(frontend): update hero banner assets",
+  "target_service": "frontend",
+  "author": "frank@company.com",
+  "description": "Updates client-side assets in the frontend gateway. Has zero upstream callers.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "banner_url": {"type": "string"}
+    }
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "banner_url": {"type": "string"},
+      "alt_text": {"type": "string"}
+    }
+  },
+  "proposed_edges": []
+}

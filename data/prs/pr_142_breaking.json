@@ -1,0 +1,27 @@
+{
+  "id": "PR-142",
+  "title": "refactor(payment): update payment confirmation response schema",
+  "target_service": "paymentservice",
+  "author": "bob@company.com",
+  "description": "Refactors charge_card response and removes transaction_id field.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "status": {"type": "string"},
+      "amount": {"type": "number"},
+      "currency": {"type": "string"},
+      "transaction_id": {"type": "string"}
+    },
+    "required": ["status", "amount", "transaction_id"]
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "status": {"type": "string"},
+      "amount": {"type": "number"},
+      "currency": {"type": "string"}
+    },
+    "required": ["status", "amount"]
+  },
+  "proposed_edges": []
+}

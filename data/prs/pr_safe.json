@@ -1,0 +1,25 @@
+{
+  "id": "PR-010",
+  "title": "feat(cart): add optional discount_code field",
+  "target_service": "cartservice",
+  "author": "alice@company.com",
+  "description": "Adds backwards-compatible discount_code string field to cart items.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "user_id": {"type": "string"},
+      "items": {"type": "array"}
+    },
+    "required": ["user_id"]
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "user_id": {"type": "string"},
+      "items": {"type": "array"},
+      "discount_code": {"type": "string"}
+    },
+    "required": ["user_id"]
+  },
+  "proposed_edges": []
+}

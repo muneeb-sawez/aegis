@@ -1,0 +1,28 @@
+# AEGIS — Open-Source Intelligence & Research Comparison Matrix
+
+This document provides a comparative analysis of key open-source systems, research publications, and commercial references relevant to the AEGIS architecture.
+
+---
+
+## 1. Comparative Reference Matrix
+
+| Reference & URL | Problem Addressed | Relevant Design Pattern | License / Conditions | Proposed AEGIS Application | Required Modifications | Decision & Rationale |
+|---|---|---|---|---|---|---|
+| **SRE-agent**<br>[martinimarcello00/SRE-agent](https://github.com/martinimarcello00/SRE-agent) | Autonomous incident response & RCA on Kubernetes using LangGraph. | • Hybrid triage combining Four Golden Signals heuristics with LLM.<br>• Topology-aware planning worker agents. | Apache 2.0 / Open Source | Adapt topology-aware triage and Golden Signals heuristic bounds for AEGIS RCA agent (`M6`). | Replace LangGraph agent loops with deterministic graph-context retrieval and LiteLLM streaming. | **Adapt**: Use the insight that deterministic metric thresholds must pre-filter candidate nodes to prevent LLM hallucinations. |
+| **Microsoft AIOpsLab**<br>[microsoft/AIOpsLab](https://github.com/microsoft/AIOpsLab) | Experimental benchmark & orchestrator for AIOps agents. | • Agent-Cloud Interface (ACI) orchestrator.<br>• Push-button fault injection (resource exhaustion, misconfig).<br>• Standardized evaluation harness. | MIT License | Blueprint for AEGIS Chaos & Telemetry Emulator (`M5`) and evaluation methodology. | Simplify from full cloud/K8s orchestrator to in-memory/stateful chaos emulator for Phase 1. | **Adapt**: Borrow the problem initialization lifecycle (`init_problem` $\to$ interaction loop $\to$ score). |
+| **Google Online Boutique**<br>[GoogleCloudPlatform/microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo) | Canonical 11-tier microservice testbed for distributed architectures. | • Realistic gRPC / HTTP microservice topology with Postgres/Redis.<br>• Real dependency chains (frontend $\to$ checkout $\to$ payment/shipping). | Apache 2.0 | Reference topology for Week 4 Ingestion-lite (`M3`) and ground-truth validation. | Parse K8s deployment manifests & env vars statically into `CALLS` edges. | **Adopt as Reference**: Provides realistic microservice relationships and failure modes. |
+| **KubeIntellect**<br>[MSKazemi/kubeintellect](https://github.com/MSKazemi/kubeintellect) | Human-governed AI SRE framework for Kubernetes management. | • Strict separation of read-only diagnostics vs mutating actions.<br>• Mandatory human-in-the-loop (HITL) authorization gates for mutations. | Open Source | Structural design of the Guarded Actuator (`M7`) and safety allowlist. | Execute on emulated cluster state in Phase 1; enforce allowlist + rollback before any mutation. | **Adopt Architecture**: Prohibits LLM from direct execution; LLM only *proposes*, guarded actuator checks allowlist. |
+| **CodeScene**<br>[codescene.com](https://codescene.com/product/how-it-works) | Change risk, code health, behavioral code analysis. | • Change-risk calculation based on blast radius, structural complexity, and historical stability. | Proprietary Commercial | Inspiration for AEGIS Pre-Ship Simulation (`M4`) risk formulation: $0.35B + 0.30C + 0.15D + 0.20H$. | Implement purely via open graph algorithms (BFS, Tarjan SCC) and JSON schema contract diffs. | **Incorporate Principles**: Validates pre-ship risk gate concept; independently implement algorithms. |
+| **GALA+**<br>[arXiv:2608.08968](https://arxiv.org/abs/2608.08968) | Graph-Augmented LLM Agents for Microservice RCA. | • Service dependency bounding to constrain LLM exploration space.<br>• STRIX telemetry scoring.<br>• Stratified remediation candidate ranking. | Academic Paper (Open Access) | Context builder (`backend/agent/context.py`) strictly bounds graph neighborhood passed to LLM. | Enforce that LLM output schema rejects any node ID not present in the supplied subgraph. | **Adopt Core Finding**: LLMs hallucinate during RCA without topological bounding; graph context provides ground truth. |
+| **PRAXIS**<br>[arXiv:2512.22113](https://arxiv.org/abs/2512.22113) | Structured graph traversal for incident RCA in cloud systems. | • Multi-layer traversal across Service Dependency Graph (SDG) & Program Dependence Graph (PDG).<br>• Reduces token overhead by 5.3× and boosts accuracy by 6.3×. | Academic Paper (Open Access) | Graph traversal routines in `GraphRepository` (`callers`, `neighbors`) retrieve structured subgraphs rather than raw dump. | Keep SDG at service level in Phase 1; reserve PDG for future deep code inspection. | **Adopt Core Finding**: Structured graph queries drastically outperform unstructured ReAct loops in both cost and accuracy. |
+
+---
+
+## 2. Key Synthesis & AEGIS Implementation Choices
+
+1. **Topological Grounding (from GALA+ & PRAXIS):**
+   Unstructured LLM prompts produce hallucinations in microservices. AEGIS extracts the exact $k$-hop subgraph using `GraphRepository.neighbors()` and `callers()`, passing deterministic node/edge properties directly into the LLM context.
+2. **Guarded Actuator & Safe Execution (from KubeIntellect):**
+   The LLM is completely isolated from actuation. Fix proposals are validated against an allowlist (`scale_pool`, `restart_pod`, `rollback_release`), verified with pre/post-action health probes, and backed by a dead-man rollback timer.
+3. **Reproducible Evaluation & Chaos (from Microsoft AIOpsLab):**
+   All fault simulations and telemetry streams are deterministic and repeatable, enabling objective measurement of MTTR, diagnosis accuracy, and risk consistency.

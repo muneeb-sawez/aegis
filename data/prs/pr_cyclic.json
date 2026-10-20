@@ -1,0 +1,26 @@
+{
+  "id": "PR-077",
+  "title": "feat(shipping): call orderservice to sync shipping status",
+  "target_service": "shippingservice",
+  "author": "charlie@company.com",
+  "description": "Introduces a reverse dependency from shippingservice back to orderservice, causing a cycle.",
+  "old_schema": {
+    "type": "object",
+    "properties": {
+      "shipment_id": {"type": "string"}
+    }
+  },
+  "new_schema": {
+    "type": "object",
+    "properties": {
+      "shipment_id": {"type": "string"}
+    }
+  },
+  "proposed_edges": [
+    {
+      "source": "shippingservice",
+      "target": "orderservice",
+      "type": "CALLS"
+    }
+  ]
+}
