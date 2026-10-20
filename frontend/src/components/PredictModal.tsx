@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ShieldAlert, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ShieldAlert, Play, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 interface PredictModalProps {
   isOpen: boolean;
@@ -7,17 +7,61 @@ interface PredictModalProps {
   onRiskAssessed?: (result: any) => void;
 }
 
+interface ServiceOption {
+  id: string;
+  name: string;
+  tier?: string;
+}
+
+const DEFAULT_SERVICES: ServiceOption[] = [
+  { id: 'paymentservice', name: 'paymentservice (Payment Gateway)', tier: 'critical' },
+  { id: 'checkoutservice', name: 'checkoutservice (Checkout Flow)', tier: 'core' },
+  { id: 'cartservice', name: 'cartservice (Shopping Cart)', tier: 'core' },
+  { id: 'orderservice', name: 'orderservice (Order Processing)', tier: 'core' },
+  { id: 'recommendationservice', name: 'recommendationservice (Product Recs)', tier: 'support' },
+  { id: 'shippingservice', name: 'shippingservice (Fulfillment)', tier: 'core' },
+  { id: 'emailservice', name: 'emailservice (Notifications)', tier: 'utility' },
+  { id: 'frontend', name: 'frontend (API Gateway)', tier: 'presentation' },
+];
+
 export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onRiskAssessed }) => {
+  const [services, setServices] = useState<ServiceOption[]>(DEFAULT_SERVICES);
   const [selectedService, setSelectedService] = useState('paymentservice');
   const [changeType, setChangeType] = useState('api_breaking');
+  const [newDepTarget, setNewDepTarget] = useState('cartservice');
   const [description, setDescription] = useState('Remove transaction_id field from charge response');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
+
+  // Fetch available services from active graph topology
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchServices = async () => {
+      try {
+        const resp = await fetch('/api/predict/services');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setServices(data.map((s: any) => ({
+              id: s.id,
+              name: s.name ? `${s.id} (${s.name})` : s.id,
+              tier: s.tier || 'core',
+            })));
+          }
+        }
+      } catch (e) {
+        // Fall back to default catalog silently
+      }
+    };
+    fetchServices();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleRunAnalysis = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const resp = await fetch('/api/predict/analyze', {
         method: 'POST',
@@ -25,17 +69,25 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
         body: JSON.stringify({
           service_id: selectedService,
           change_type: changeType,
-          change_title: `Change to ${selectedService}`,
+          change_title: `Proposed Change to ${selectedService}`,
           description: description,
+          new_dependency_target: changeType === 'dependency_add' ? newDepTarget : undefined,
         }),
       });
+
       if (resp.ok) {
         const data = await resp.json();
         setResult(data);
         if (onRiskAssessed) onRiskAssessed(data);
+      } else {
+        const errJson = await resp.json().catch(() => null);
+        const errorDetail = errJson?.detail || `PREDICT API request failed with status HTTP ${resp.status}`;
+        setError(errorDetail);
+        setResult(null);
       }
-    } catch (e) {
-      console.error('PREDICT error:', e);
+    } catch (e: any) {
+      setError(e?.message || 'Network error communicating with PREDICT API.');
+      setResult(null);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +108,7 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
     >
       <div
         style={{
-          width: 820,
+          width: 840,
           maxHeight: '90vh',
           backgroundColor: '#0a101d',
           border: '1px solid #1e293b',
@@ -97,7 +149,7 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
         </div>
 
         <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Form */}
+          {/* Configuration Form */}
           <div
             style={{
               display: 'grid',
@@ -127,14 +179,11 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                   outline: 'none',
                 }}
               >
-                <option value="paymentservice">paymentservice (Payment Gateway)</option>
-                <option value="checkoutservice">checkoutservice (Checkout Flow)</option>
-                <option value="cartservice">cartservice (Shopping Cart)</option>
-                <option value="orderservice">orderservice (Order Processing)</option>
-                <option value="recommendationservice">recommendationservice (Product Recs)</option>
-                <option value="shippingservice">shippingservice (Fulfillment)</option>
-                <option value="emailservice">emailservice (Notifications)</option>
-                <option value="frontend">frontend (API Gateway)</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -145,13 +194,16 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
               <select
                 value={changeType}
                 onChange={(e) => {
-                  setChangeType(e.target.value);
-                  if (e.target.value === 'api_breaking') {
-                    setDescription('Remove transaction_id field from charge response');
-                  } else if (e.target.value === 'additive_safe') {
+                  const val = e.target.value;
+                  setChangeType(val);
+                  if (val === 'api_breaking') {
+                    setDescription('Remove transaction_id field from charge response schema');
+                  } else if (val === 'additive_safe') {
                     setDescription('Add optional discount_code string field to response schema');
-                  } else if (e.target.value === 'dependency_cycle') {
-                    setDescription('Introduce circular reverse dependency from shippingservice to caller');
+                  } else if (val === 'dependency_add') {
+                    setDescription(`Add outbound CALLS edge to new dependency target`);
+                  } else if (val === 'dependency_cycle') {
+                    setDescription('Introduce circular dependency back into upstream caller');
                   }
                 }}
                 style={{
@@ -165,11 +217,42 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                   outline: 'none',
                 }}
               >
-                <option value="api_breaking">Breaking API Contract (Removes Required Field)</option>
-                <option value="additive_safe">Backwards-Compatible Additive Field (Safe)</option>
-                <option value="dependency_cycle">Architectural Reverse Call (Causes Cycle)</option>
+                <option value="additive_safe">Backwards-Compatible Additive Field (Safe — Low Risk)</option>
+                <option value="api_breaking">Breaking API Contract (Removes Required Field — High Risk)</option>
+                <option value="dependency_add">Add Dependency Call (Architecture Modification)</option>
+                <option value="dependency_cycle">Architectural Reverse Call (Causes Dependency Cycle)</option>
               </select>
             </div>
+
+            {changeType === 'dependency_add' && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 5 }}>
+                  New Dependency Target Service:
+                </label>
+                <select
+                  value={newDepTarget}
+                  onChange={(e) => setNewDepTarget(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #334155',
+                    color: '#f8fafc',
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
+                >
+                  {services
+                    .filter((s) => s.id !== selectedService)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 5 }}>
@@ -210,14 +293,86 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                   cursor: isLoading ? 'not-allowed' : 'pointer',
                 }}
               >
-                <Play size={14} />
-                <span>{isLoading ? 'Traversing Graph...' : 'Run PREDICT Risk Analysis'}</span>
+                {isLoading ? <RefreshCw size={14} className="spin" /> : <Play size={14} />}
+                <span>{isLoading ? 'Traversing Graph Impact...' : 'Run PREDICT Risk Analysis'}</span>
               </button>
             </div>
           </div>
 
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div
+              style={{
+                padding: '24px',
+                textAlign: 'center',
+                backgroundColor: '#070c16',
+                borderRadius: 10,
+                border: '1px solid #1e293b',
+                color: '#38bdf8',
+                fontSize: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <RefreshCw size={20} className="spin" />
+              <span>Analyzing graph blast radius, evaluating contract diff, checking cycles, and querying incident history...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <div
+              style={{
+                padding: '16px',
+                borderRadius: 10,
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid #ef4444',
+                color: '#fca5a5',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+                fontSize: 12,
+              }}
+            >
+              <AlertTriangle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 4 }}>
+                  Analysis Failed
+                </div>
+                <div>{error}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!result && !isLoading && !error && (
+            <div
+              style={{
+                padding: '32px 20px',
+                textAlign: 'center',
+                backgroundColor: '#070c16',
+                borderRadius: 10,
+                border: '1px dashed #1e293b',
+                color: '#64748b',
+                fontSize: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Info size={22} color="#475569" />
+              <div style={{ fontWeight: 600, color: '#94a3b8' }}>No Change Analyzed Yet</div>
+              <div style={{ maxWidth: 440, lineHeight: 1.5 }}>
+                Select a target microservice and proposed change scenario above, then click <strong>Run PREDICT Risk Analysis</strong> to calculate the actual evidence-backed score from live graph data.
+              </div>
+            </div>
+          )}
+
           {/* Results View */}
-          {result && (
+          {result && !isLoading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Score Header Card */}
               <div
@@ -225,7 +380,12 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                   padding: '16px 20px',
                   borderRadius: 10,
                   backgroundColor: '#070c16',
-                  border: result.verdict === 'Blocked' ? '1px solid #ef4444' : result.verdict === 'Warn' ? '1px solid #f97316' : '1px solid #10b981',
+                  border:
+                    result.verdict === 'Blocked'
+                      ? '1px solid #ef4444'
+                      : result.verdict === 'Warn'
+                      ? '1px solid #f97316'
+                      : '1px solid #10b981',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -239,22 +399,36 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                         borderRadius: 4,
                         fontSize: 11,
                         fontWeight: 800,
-                        backgroundColor: result.verdict === 'Blocked' ? 'rgba(239, 68, 68, 0.2)' : result.verdict === 'Warn' ? 'rgba(249, 115, 22, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                        color: result.verdict === 'Blocked' ? '#f87171' : result.verdict === 'Warn' ? '#fb923c' : '#34d399',
+                        backgroundColor:
+                          result.verdict === 'Blocked'
+                            ? 'rgba(239, 68, 68, 0.2)'
+                            : result.verdict === 'Warn'
+                            ? 'rgba(249, 115, 22, 0.2)'
+                            : 'rgba(16, 185, 129, 0.2)',
+                        color:
+                          result.verdict === 'Blocked'
+                            ? '#f87171'
+                            : result.verdict === 'Warn'
+                            ? '#fb923c'
+                            : '#34d399',
                         textTransform: 'uppercase',
                       }}
                     >
-                      {result.verdict === 'Blocked' ? 'High Risk — Deployment Blocked' : result.verdict === 'Warn' ? 'Moderate Risk — Review Required' : 'Low Risk — Approved'}
+                      {result.verdict === 'Blocked'
+                        ? 'High Risk — Deployment Blocked'
+                        : result.verdict === 'Warn'
+                        ? 'Moderate Risk — SRE Review Required'
+                        : 'Low Risk — Approved'}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, maxWidth: 540 }}>
                     {result.recommendation}
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: '#f8fafc' }}>
-                    {result.risk_score} <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>/ 100</span>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: '#f8fafc' }}>
+                    {Number(result.risk_score).toFixed(1)} <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>/ 100</span>
                   </div>
                   <div style={{ fontSize: 10, color: '#64748b' }}>0.35B + 0.30C + 0.15D + 0.20H</div>
                 </div>
@@ -262,54 +436,73 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
 
               {/* Component breakdown */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                <div style={{ padding: '10px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
+                <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Blast Radius (B)</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
-                    {result.breakdown.blast_score}
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
+                    {Number(result.breakdown?.blast_score ?? 0).toFixed(1)}
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight 0.35</div>
                 </div>
 
-                <div style={{ padding: '10px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
+                <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Contract Diff (C)</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: result.breakdown.contract_score > 0 ? '#f87171' : '#10b981', marginTop: 2 }}>
-                    {result.breakdown.contract_score}
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 800,
+                      color: (result.breakdown?.contract_score ?? 0) > 0 ? '#f87171' : '#10b981',
+                      marginTop: 2,
+                    }}
+                  >
+                    {Number(result.breakdown?.contract_score ?? 0).toFixed(1)}
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight 0.30</div>
                 </div>
 
-                <div style={{ padding: '10px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
+                <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Cycle Penalty (D)</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: result.breakdown.cycle_score > 0 ? '#f87171' : '#10b981', marginTop: 2 }}>
-                    {result.breakdown.cycle_score}
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 800,
+                      color: (result.breakdown?.cycle_score ?? 0) > 0 ? '#f87171' : '#10b981',
+                      marginTop: 2,
+                    }}
+                  >
+                    {Number(result.breakdown?.cycle_score ?? 0).toFixed(1)}
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight 0.15</div>
                 </div>
 
-                <div style={{ padding: '10px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
+                <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Incident History (H)</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#c084fc', marginTop: 2 }}>
-                    {result.breakdown.history_score}
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#c084fc', marginTop: 2 }}>
+                    {Number(result.breakdown?.history_score ?? 0).toFixed(1)}
                   </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight 0.20 ({result.incident_count_30d} incs)</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    Weight 0.20 ({result.incident_count_30d ?? 0} incs)
+                  </div>
                 </div>
               </div>
 
               {/* Upstream Callers Traversal Details */}
-              <div style={{ padding: '12px 16px', borderRadius: 8, backgroundColor: '#070c16', border: '1px solid #1e293b' }}>
+              <div style={{ padding: '14px 16px', borderRadius: 8, backgroundColor: '#070c16', border: '1px solid #1e293b' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 8 }}>
-                  Upstream Affected Callers (Traversed Backwards along CALLS):
+                  Upstream Affected Callers & Dependents (Traversed Backwards along CALLS / DEPENDS_ON):
                 </div>
-                {result.blast_details.length > 0 ? (
+                {result.blast_details && result.blast_details.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {result.blast_details.map((caller: any, idx: number) => (
                       <div
                         key={idx}
                         style={{
-                          padding: '6px 10px',
+                          padding: '6px 12px',
                           borderRadius: 6,
                           backgroundColor: '#0f172a',
-                          border: caller.severity_halo === 'red' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(249, 115, 22, 0.4)',
+                          border:
+                            caller.severity_halo === 'red'
+                              ? '1px solid rgba(239, 68, 68, 0.4)'
+                              : '1px solid rgba(249, 115, 22, 0.4)',
                           fontSize: 11,
                           color: '#e2e8f0',
                           display: 'flex',
@@ -318,13 +511,41 @@ export const PredictModal: React.FC<PredictModalProps> = ({ isOpen, onClose, onR
                         }}
                       >
                         <span style={{ fontWeight: 600 }}>{caller.node}</span>
-                        <span style={{ fontSize: 9, color: '#64748b' }}>(Hop {caller.hops}, Weight {caller.impact_weight})</span>
+                        <span style={{ fontSize: 10, color: '#64748b' }}>
+                          (Hop {caller.hops}, Attenuation {caller.impact_weight})
+                        </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 11, color: '#64748b' }}>No upstream callers affected (leaf service).</div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    No upstream callers or dependents affected (isolated or leaf service).
+                  </div>
                 )}
+              </div>
+
+              {/* Deductions & Explanations */}
+              <div style={{ padding: '14px 16px', borderRadius: 8, backgroundColor: '#070c16', border: '1px solid #1e293b' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 8 }}>
+                  Calculated Risk Factors & Evidence:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {result.explanation?.map((exp: string, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        backgroundColor: '#0f172a',
+                        border: '1px solid #1e293b',
+                        fontSize: 11,
+                        color: '#94a3b8',
+                      }}
+                    >
+                      • {exp}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

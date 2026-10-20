@@ -4,8 +4,9 @@ import { Network, ShieldCheck, Activity, CheckCircle2 } from 'lucide-react';
 interface BottomLayerCardsProps {
   nodeCount?: number;
   edgeCount?: number;
-  riskScore?: number;
+  riskScore?: number | null;
   riskCategory?: string;
+  targetService?: string;
   activeAlertsCount?: number;
   onOpenPredict?: () => void;
   onOpenMonitor?: () => void;
@@ -15,8 +16,9 @@ interface BottomLayerCardsProps {
 export const BottomLayerCards: React.FC<BottomLayerCardsProps> = ({
   nodeCount = 54,
   edgeCount = 142,
-  riskScore = 13.4,
-  riskCategory = 'Approved',
+  riskScore = null,
+  riskCategory = 'Ready',
+  targetService = 'None',
   activeAlertsCount = 0,
   onOpenPredict,
   onOpenMonitor,
@@ -155,11 +157,15 @@ export const BottomLayerCards: React.FC<BottomLayerCardsProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
           <div>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Computed Risk</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>{riskScore.toFixed(1)} / 100</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
+              {riskScore !== null && riskScore !== undefined ? `${Number(riskScore).toFixed(1)} / 100` : '-- / 100'}
+            </div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Target Service</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginTop: 4 }}>paymentservice</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginTop: 4 }}>
+              {targetService || 'paymentservice'}
+            </div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Verdict</div>

@@ -36,9 +36,9 @@ def detect_cycles(
     for n in topo.nodes:
         G.add_node(n.id)
 
-    # Add existing CALLS edges
+    # Add existing dependency and call edges
     for e in topo.edges:
-        if e.type == "CALLS":
+        if e.type in ("CALLS", "DEPENDS_ON", "CONNECTS_TO"):
             G.add_edge(e.source, e.target)
 
     # Add proposed new edges

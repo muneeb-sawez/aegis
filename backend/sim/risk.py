@@ -129,9 +129,14 @@ def assess_change_risk(
     else:
         explanations.append("Cycle Penalty (D=0.0): Graph topology remains acyclic.")
 
-    explanations.append(
-        f"Incident History (H={h_score}): {inc_count} incident(s) recorded on {pr.target_service} in the past 30 days."
-    )
+    if inc_count == 0:
+        explanations.append(
+            f"Incident History (H=0.0): No incidents recorded on {pr.target_service} in the past 30 days (clean baseline)."
+        )
+    else:
+        explanations.append(
+            f"Incident History (H={h_score}): {inc_count} incident(s) recorded on {pr.target_service} in the past 30 days (+{h_score:.1f} penalty)."
+        )
 
     return RiskAssessmentResult(
         pr_id=pr.id,

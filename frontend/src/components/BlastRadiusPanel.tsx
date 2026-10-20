@@ -198,7 +198,7 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
             </svg>
           </div>
 
-          {/* 3. Owner */}
+          {/* 3. Service Ownership */}
           <div
             style={{
               padding: '12px 14px',
@@ -211,9 +211,13 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
             }}
           >
             <div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Owner ⓘ</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>team-platform</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Team Core</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Target Service</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                {simResult?.target_service ?? 'paymentservice'}
+              </div>
+              <div style={{ fontSize: 10, color: '#64748b' }}>
+                {simResult?.author ? `Author: ${simResult.author}` : 'Core Tier 1 Service'}
+              </div>
             </div>
             <div
               style={{
@@ -226,11 +230,11 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 800,
               }}
             >
-              TP
+              {(simResult?.target_service ? simResult.target_service.slice(0, 2).toUpperCase() : 'PS')}
             </div>
           </div>
 
@@ -245,25 +249,25 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8' }}>
-                <AlertCircle size={14} color="#f97316" />
+                <AlertCircle size={14} color={verdict === 'Blocked' ? '#ef4444' : verdict === 'Warn' ? '#f97316' : '#10b981'} />
                 <span>Potential Impact ⓘ</span>
               </div>
               <span
                 style={{
                   fontSize: 9,
                   fontWeight: 800,
-                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                  color: '#f87171',
+                  backgroundColor: verdict === 'Blocked' ? 'rgba(239, 68, 68, 0.2)' : verdict === 'Warn' ? 'rgba(249, 115, 22, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                  color: verdict === 'Blocked' ? '#f87171' : verdict === 'Warn' ? '#fb923c' : '#34d399',
                   padding: '1px 6px',
                   borderRadius: 4,
                   textTransform: 'uppercase',
                 }}
               >
-                High
+                {verdict === 'Blocked' ? 'High Impact' : verdict === 'Warn' ? 'Moderate Impact' : verdict === 'Approved' ? 'Low Impact' : 'Awaiting Simulation'}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>
-              Service degradation or outage possible across checkout & payment gateway.
+            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>
+              {simResult?.recommendation ?? 'No simulation executed yet. Select a change and run analysis.'}
             </div>
           </div>
         </div>

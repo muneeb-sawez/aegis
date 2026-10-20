@@ -334,9 +334,11 @@ export function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pr_id: prId, target_service: 'paymentservice' }),
       });
-      const data = await resp.json();
-      setSimResult(data);
-      await loadTopology();
+      if (resp.ok) {
+        const data = await resp.json();
+        setSimResult(data);
+        handleRiskAssessed(data);
+      }
     } catch (e) {
       console.error('Simulation error:', e);
     }
@@ -910,8 +912,9 @@ export function App() {
       <BottomLayerCards
         nodeCount={nodeCount}
         edgeCount={edgeCount}
-        riskScore={simResult?.risk_score ?? 13.4}
-        riskCategory={simResult?.verdict ?? 'Approved'}
+        riskScore={simResult?.risk_score !== undefined ? Number(simResult.risk_score) : null}
+        riskCategory={simResult?.verdict ?? 'Ready'}
+        targetService={simResult?.target_service}
         activeAlertsCount={faultActive ? 1 : 0}
         onOpenPredict={() => setIsPredictOpen(true)}
         onOpenMonitor={() => setIsMonitorOpen(true)}
@@ -1020,10 +1023,12 @@ export function App() {
 
                 <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Incident History (H)</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: committed ? '#c084fc' : '#94a3b8', marginTop: 4 }}>
-                    {simResult?.breakdown?.history_score !== undefined ? Number(simResult.breakdown.history_score).toFixed(1) : (committed ? '25.0' : '0.0')}
+                  <div style={{ fontSize: 20, fontWeight: 800, color: (simResult?.breakdown?.history_score ?? 0) > 0 ? '#c084fc' : '#94a3b8', marginTop: 4 }}>
+                    {simResult?.breakdown?.history_score !== undefined ? Number(simResult.breakdown.history_score).toFixed(1) : '--'}
                   </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.20 ({committed ? '+5 pt jump' : 'Clean'})</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    Weight: 0.20 ({simResult?.incident_count_30d !== undefined ? `${simResult.incident_count_30d} incs` : 'Clean'})
+                  </div>
                 </div>
               </div>
 
