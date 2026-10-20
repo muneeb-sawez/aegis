@@ -944,6 +944,7 @@ export function App() {
       <MonitorModal
         isOpen={isMonitorOpen}
         onClose={() => setIsMonitorOpen(false)}
+        onAlertStatusChange={(count) => setFaultActive(count > 0)}
       />
 
       {/* 6. Repository Ingestion Modal */}

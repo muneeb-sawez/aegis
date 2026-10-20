@@ -51,6 +51,14 @@ def configure_service_endpoint(req: ConfigureEndpointRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/unconfigure")
+def unconfigure_service_endpoint(service_id: str) -> dict[str, Any]:
+    """Remove a service's monitored endpoint, reverting it to unconfigured."""
+    checker = get_health_checker()
+    checker.unconfigure_endpoint(service_id)
+    return {"status": "ok", "service_id": service_id, "endpoint_url": None}
+
+
 @router.get("/probe/{service_id}")
 def probe_service_endpoint(service_id: str) -> dict[str, Any]:
     """Target probe endpoint for individual service health inspection."""

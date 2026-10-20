@@ -25,6 +25,8 @@ def reset_to_baseline() -> ResetResponse:
     """Restore demo baseline in one click (clears incidents, decisions, fault metrics)."""
     repo = get_repository()
     repo.reset()
+    from backend.monitor.health_checker import get_health_checker
+    get_health_checker().reset()
     topo = repo.get_topology()
     return ResetResponse(
         status="ok",
