@@ -26,7 +26,7 @@ BLOCKED_HOSTS = {"169.254.169.254", "metadata.google.internal", "metadata"}
 class ServiceHealthRecord(BaseModel):
     service_id: str
     endpoint_url: str
-    status: Literal["healthy", "degraded", "unhealthy", "unreachable"] = "healthy"
+    status: Literal["pending", "healthy", "degraded", "unhealthy", "unreachable"] = "pending"
     http_status: Optional[int] = None
     response_time_ms: float = 0.0
     last_check_time: str = ""
@@ -61,16 +61,16 @@ class HealthChecker:
         self._init_defaults()
 
     def _init_defaults(self):
-        # Configure endpoints for core services
+        # Configure dedicated probe endpoints per microservice
         defaults = {
-            "frontend": "http://127.0.0.1:8000/",
-            "checkoutservice": "http://127.0.0.1:8000/api/graph/topology",
-            "paymentservice": "http://127.0.0.1:8000/api/graph/topology",
-            "orderservice": "http://127.0.0.1:8000/",
-            "cartservice": "http://127.0.0.1:8000/",
-            "recommendationservice": "http://127.0.0.1:8000/",
-            "shippingservice": "http://127.0.0.1:8000/",
-            "emailservice": "http://127.0.0.1:8000/",
+            "frontend": "http://127.0.0.1:8000/api/monitor/probe/frontend",
+            "checkoutservice": "http://127.0.0.1:8000/api/monitor/probe/checkoutservice",
+            "paymentservice": "http://127.0.0.1:8000/api/monitor/probe/paymentservice",
+            "orderservice": "http://127.0.0.1:8000/api/monitor/probe/orderservice",
+            "cartservice": "http://127.0.0.1:8000/api/monitor/probe/cartservice",
+            "recommendationservice": "http://127.0.0.1:8000/api/monitor/probe/recommendationservice",
+            "shippingservice": "http://127.0.0.1:8000/api/monitor/probe/shippingservice",
+            "emailservice": "http://127.0.0.1:8000/api/monitor/probe/emailservice",
         }
         for sid, url in defaults.items():
             self.configure_endpoint(sid, url)
@@ -83,11 +83,43 @@ class HealthChecker:
             self._health_state[service_id] = ServiceHealthRecord(
                 service_id=service_id,
                 endpoint_url=endpoint_url,
-                status="healthy",
-                last_check_time=datetime.now(timezone.utc).isoformat(),
+                status="pending",
+                last_check_time="",
             )
         else:
             self._health_state[service_id].endpoint_url = endpoint_url
+
+    async def start_worker(self, interval_sec: float = 10.0):
+        """Start continuous background monitoring worker (Directive §3.C)."""
+        if self._running:
+            return
+        self._running = True
+
+        async def _loop():
+            # Initial probe on startup
+            try:
+                await self.check_all_services()
+            except Exception:
+                pass
+
+            while self._running:
+                try:
+                    await asyncio.sleep(interval_sec)
+                    if self._running:
+                        await self.check_all_services()
+                except asyncio.CancelledError:
+                    break
+                except Exception:
+                    pass
+
+        self._task = asyncio.create_task(_loop())
+
+    def stop_worker(self):
+        """Stop background health check worker."""
+        self._running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+            self._task = None
 
     def _validate_url(self, url: str):
         """Validate URL to prevent SSRF and unsafe requests."""

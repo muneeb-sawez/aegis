@@ -76,44 +76,25 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
         clean_url = req.repo_url.strip().lower()
         from backend.ingestion.sample_repos import SAMPLE_REPOSITORIES
 
-        # Check if matched with built-in sample repositories
+        # Check if explicitly requested as a built-in sample repository
         matched_sample = None
-        for slug, sample in SAMPLE_REPOSITORIES.items():
-            if slug.lower() in clean_url or clean_url in slug.lower():
-                matched_sample = sample
-                break
+        if clean_url.startswith("sample:"):
+            sample_slug = clean_url.split("sample:", 1)[1].strip()
+            matched_sample = SAMPLE_REPOSITORIES.get(sample_slug)
+        elif clean_url in SAMPLE_REPOSITORIES:
+            matched_sample = SAMPLE_REPOSITORIES[clean_url]
 
         if matched_sample:
             yaml_content = matched_sample["yaml"]
             source_desc = f"Sample Repo: {matched_sample['slug']}"
         else:
-            try:
-                owner, repo_name = parse_github_repo_url(req.repo_url)
-                source_desc = f"GitHub: {owner}/{repo_name}"
-                manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
-                    owner, repo_name, branch=req.branch
-                )
-                source_desc += f" ({manifest_filename})"
-            except Exception as e:
-                # If GitHub lookup fails, check if any sample repository matches partially
-                if "shop" in clean_url or "ecommerce" in clean_url or "boutique" in clean_url:
-                    sample = SAMPLE_REPOSITORIES["shop-sphere/ecommerce-core"]
-                    yaml_content = sample["yaml"]
-                    source_desc = f"Sample Repo (Offline Fallback): {sample['slug']}"
-                elif "fintech" in clean_url or "ledger" in clean_url:
-                    sample = SAMPLE_REPOSITORIES["fintech-nexus/ledger-core"]
-                    yaml_content = sample["yaml"]
-                    source_desc = f"Sample Repo (Offline Fallback): {sample['slug']}"
-                elif "stream" in clean_url or "pipeline" in clean_url or "data" in clean_url:
-                    sample = SAMPLE_REPOSITORIES["data-mesh/streaming-pipeline"]
-                    yaml_content = sample["yaml"]
-                    source_desc = f"Sample Repo (Offline Fallback): {sample['slug']}"
-                elif "health" in clean_url or "telehealth" in clean_url:
-                    sample = SAMPLE_REPOSITORIES["health-sync/telehealth-platform"]
-                    yaml_content = sample["yaml"]
-                    source_desc = f"Sample Repo (Offline Fallback): {sample['slug']}"
-                else:
-                    raise e
+            # Query actual GitHub repository via REST API
+            owner, repo_name = parse_github_repo_url(req.repo_url)
+            source_desc = f"GitHub: {owner}/{repo_name}"
+            manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
+                owner, repo_name, branch=req.branch
+            )
+            source_desc += f" ({manifest_filename})"
 
     if not yaml_content:
         raise ValueError("Either 'repo_url' or 'compose_yaml_content' must be provided.")

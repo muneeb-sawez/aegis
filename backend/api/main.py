@@ -21,10 +21,25 @@ from backend.api.routes_monitor import router as monitor_router
 from backend.api.routes_predict import router as predict_router
 from backend.api.routes_sim import router as sim_router
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start continuous background monitoring worker (Directive §3.C)
+    from backend.monitor.health_checker import get_health_checker
+
+    checker = get_health_checker()
+    await checker.start_worker(interval_sec=10.0)
+    yield
+    # Shutdown: Stop worker cleanly
+    checker.stop_worker()
+
+
 app = FastAPI(
     title="AEGIS — Autonomous Engineering Graph & Intelligence System",
     description="Graph-grounded pre-deployment change risk simulation (PREDICT) and post-deployment service health monitoring (MONITOR).",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 # Enable CORS for local development

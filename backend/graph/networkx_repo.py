@@ -137,8 +137,11 @@ class NetworkXGraphRepository(GraphRepository):
             # Look at predecessors: nodes that have an edge directed into curr
             for pred in self._graph.predecessors(curr):
                 edge_dict = self._graph.get_edge_data(pred, curr)
-                # Verify at least one edge is of type 'CALLS'
-                is_call = any(attrs.get("type") == "CALLS" for attrs in edge_dict.values())
+                # Verify at least one edge is a caller/dependency edge (CALLS, DEPENDS_ON, CONNECTS_TO)
+                is_call = any(
+                    attrs.get("type") in ("CALLS", "DEPENDS_ON", "CONNECTS_TO")
+                    for attrs in edge_dict.values()
+                )
                 if is_call:
                     next_hop = curr_hop + 1
                     if pred not in callers_map or next_hop < callers_map[pred]:

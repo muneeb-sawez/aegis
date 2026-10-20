@@ -228,7 +228,7 @@ const initialEdges: Edge[] = [
 
 export function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [activeTab, setActiveTab] = useState('canvas');
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isPredictOpen, setIsPredictOpen] = useState(false);
@@ -246,14 +246,80 @@ export function App() {
   const [committed, setCommitted] = useState(false);
   const [diagnosisLogs, setDiagnosisLogs] = useState<any[]>([]);
 
-  // Load live graph topology counts
+  // Load live graph topology and synchronize React Flow canvas
   const loadTopology = async () => {
     try {
       const resp = await fetch('/api/graph/topology');
       if (resp.ok) {
         const data = await resp.json();
-        if (data.nodes) setNodeCount(data.nodes.length);
-        if (data.edges) setEdgeCount(data.edges.length);
+        const topoNodes = data.nodes || [];
+        const topoEdges = data.edges || [];
+        setNodeCount(topoNodes.length);
+        setEdgeCount(topoEdges.length);
+
+        if (topoNodes.length > 0) {
+          const knownMap: Record<string, { x: number; y: number; type?: string }> = {
+            'internet': { x: 440, y: 30, type: 'serviceNode' },
+            'route53': { x: 250, y: 90, type: 'serviceNode' },
+            'waf': { x: 630, y: 90, type: 'serviceNode' },
+            'prod-db': { x: 170, y: 200, type: 'criticalNode' },
+            'api-gateway': { x: 400, y: 150, type: 'criticalNode' },
+            'checkoutservice': { x: 580, y: 210, type: 'criticalNode' },
+            'db-replica-1': { x: 180, y: 360, type: 'serviceNode' },
+            'db-replica-2': { x: 300, y: 360, type: 'serviceNode' },
+            'cartservice': { x: 480, y: 330, type: 'serviceNode' },
+            'paymentservice': { x: 620, y: 340, type: 'criticalNode' },
+            'shippingservice': { x: 760, y: 330, type: 'serviceNode' },
+            'stripe-gateway': { x: 740, y: 440, type: 'serviceNode' },
+            'prod-vpc': { x: 450, y: 440, type: 'vpcGroupNode' },
+            'app-role': { x: 340, y: 550, type: 'iamRoleNode' },
+            'deploy-role': { x: 500, y: 550, type: 'iamRoleNode' },
+            'dba-role': { x: 660, y: 550, type: 'iamRoleNode' },
+          };
+
+          const dynamicNodes: Node[] = topoNodes.map((n: any, idx: number) => {
+            const known = knownMap[n.id];
+            let pos = { x: 140 + (idx % 5) * 160, y: 140 + Math.floor(idx / 5) * 110 };
+            let nodeType = 'serviceNode';
+
+            if (known) {
+              pos = { x: known.x, y: known.y };
+              if (known.type) nodeType = known.type;
+            } else {
+              if (n.label === 'Database') nodeType = 'serviceNode';
+              else if (n.id.includes('gateway') || n.id.includes('checkout') || n.id.includes('payment')) nodeType = 'criticalNode';
+            }
+
+            const isCritical = nodeType === 'criticalNode';
+            return {
+              id: n.id,
+              type: nodeType,
+              position: pos,
+              data: {
+                label: n.id,
+                sublabel: n.label || 'Service',
+                iconType: n.label === 'Database' ? 'db' : (n.id.includes('gateway') ? 'gateway' : 'service'),
+                status: isCritical ? 'critical' : 'normal',
+                badge: isCritical ? 'CRITICAL' : (n.label === 'Database' ? 'DB' : undefined),
+                subnets: ['Private Subnet 10.0.1.0/24', 'Public Subnet 10.0.2.0/24'],
+              },
+            };
+          });
+
+          const dynamicEdges: Edge[] = topoEdges.map((e: any, idx: number) => {
+            const isCritical = e.type === 'CALLS';
+            return {
+              id: `e-${e.source}-${e.target}-${idx}`,
+              source: e.source,
+              target: e.target,
+              className: isCritical ? 'edge-critical' : 'edge-dependency',
+              animated: isCritical,
+            };
+          });
+
+          setNodes(dynamicNodes);
+          setEdges(dynamicEdges);
+        }
       }
     } catch (e) {
       console.error('Topology load error:', e);
@@ -931,7 +997,7 @@ export function App() {
                 <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Blast Radius (B)</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc', marginTop: 4 }}>
-                    {simResult?.breakdown?.blast_score ?? 80.0}
+                    {simResult?.breakdown?.blast_score !== undefined ? Number(simResult.breakdown.blast_score).toFixed(1) : '--'}
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.35</div>
                 </div>
@@ -939,23 +1005,23 @@ export function App() {
                 <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Contract Diff (C)</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#f87171', marginTop: 4 }}>
-                    {simResult?.breakdown?.contract_score ?? 100.0}
+                    {simResult?.breakdown?.contract_score !== undefined ? Number(simResult.breakdown.contract_score).toFixed(1) : '--'}
                   </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.30 (Breaking)</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.30</div>
                 </div>
 
                 <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Cycle Penalty (D)</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
-                    {simResult?.breakdown?.cycle_score ?? 0.0}
+                    {simResult?.breakdown?.cycle_score !== undefined ? Number(simResult.breakdown.cycle_score).toFixed(1) : '--'}
                   </div>
-                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.15 (Acyclic)</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.15</div>
                 </div>
 
                 <div style={{ padding: '12px', borderRadius: 8, backgroundColor: '#0f172a', border: '1px solid #1e293b' }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>Incident History (H)</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: committed ? '#c084fc' : '#94a3b8', marginTop: 4 }}>
-                    {simResult?.breakdown?.history_score ?? (committed ? 25.0 : 0.0)}
+                    {simResult?.breakdown?.history_score !== undefined ? Number(simResult.breakdown.history_score).toFixed(1) : (committed ? '25.0' : '0.0')}
                   </div>
                   <div style={{ fontSize: 9, color: '#94a3b8' }}>Weight: 0.20 ({committed ? '+5 pt jump' : 'Clean'})</div>
                 </div>
@@ -1008,12 +1074,7 @@ export function App() {
                   Evidence & Graph Deductions:
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {(simResult?.explanation || [
-                    'Blast Radius (B=80.0): Found 9 upstream callers with total attenuated impact 5.25.',
-                    'Contract Severity (C=100.0): Breaking changes detected (removed required field transaction_id).',
-                    'Cycle Penalty (D=0.0): Graph topology remains acyclic.',
-                    'Incident History (H=0.0): 0 incidents recorded in the past 30 days.',
-                  ]).map((exp: string, idx: number) => (
+                  {(simResult?.explanation?.length ? simResult.explanation : ['No risk analysis executed yet. Run PR simulation or PREDICT analysis to compute deductions.']).map((exp: string, idx: number) => (
                     <div key={idx} style={{ padding: '8px 12px', borderRadius: 6, backgroundColor: '#0f172a', border: '1px solid #1e293b', fontSize: 11, color: '#94a3b8' }}>
                       • {exp}
                     </div>

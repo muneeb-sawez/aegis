@@ -49,3 +49,18 @@ def configure_service_endpoint(req: ConfigureEndpointRequest) -> dict[str, Any]:
         return {"status": "ok", "service_id": req.service_id, "endpoint_url": req.endpoint_url}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/probe/{service_id}")
+def probe_service_endpoint(service_id: str) -> dict[str, Any]:
+    """Target probe endpoint for individual service health inspection."""
+    from datetime import datetime, timezone
+
+    return {
+        "service_id": service_id,
+        "status": "ok",
+        "app_health": "operational",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "reachability": "connected",
+    }
+

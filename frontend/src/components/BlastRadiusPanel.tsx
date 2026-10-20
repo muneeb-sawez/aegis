@@ -44,8 +44,8 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
   const [selectedPR, setSelectedPR] = useState('PR-142');
   const [isActionsOpen, setIsActionsOpen] = useState(true);
 
-  const riskScore = simResult?.risk_score ?? (faultActive ? 86.0 : 58.0);
-  const verdict = simResult?.verdict ?? (faultActive ? 'Blocked' : 'Warn');
+  const riskScore = simResult?.risk_score !== undefined ? Number(simResult.risk_score) : null;
+  const verdict = simResult?.verdict ?? (riskScore !== null ? (riskScore >= 70 ? 'Blocked' : riskScore >= 40 ? 'Warn' : 'Approved') : 'Ready');
 
   return (
     <div
@@ -110,7 +110,7 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
           }}
         >
           <span className="pulse-indicator" />
-          CRITICAL PATH DETECTED ({verdict.toUpperCase()})
+          ANALYSIS VERDICT: {verdict.toUpperCase()}
         </div>
 
         {/* Path Breadcrumbs */}
@@ -123,15 +123,15 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
             marginBottom: 6,
           }}
         >
-          prod-db → api-gateway → checkout-svc
+          {simResult?.target_service ? `Target: ${simResult.target_service}` : 'paymentservice'}
         </div>
         <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4, marginBottom: 20 }}>
-          This path represents a critical risk with high blast radius. Upstream callers experience cascading latency under load.
+          {simResult?.summary || 'Calculated dynamic blast radius based on graph traversal of upstream callers.'}
         </div>
 
         {/* Metric Cards Stack */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-          {/* 1. Confidence */}
+          {/* 1. Risk Score */}
           <div
             style={{
               padding: '12px 14px',
@@ -143,19 +143,29 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8' }}>
                 <ShieldCheck size={14} color="#38bdf8" />
-                <span>Confidence ⓘ</span>
+                <span>Risk Score</span>
               </div>
-              <span style={{ fontSize: 10, color: '#10b981', fontWeight: 700 }}>High</span>
+              <span style={{ fontSize: 10, color: riskScore !== null && riskScore >= 70 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                {riskScore !== null ? (riskScore >= 70 ? 'High Risk' : riskScore >= 40 ? 'Moderate Risk' : 'Low Risk') : 'Pending'}
+              </span>
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc', marginBottom: 8 }}>
-              98%
+              {riskScore !== null ? `${riskScore.toFixed(1)} / 100` : '--'}
             </div>
             <div style={{ width: '100%', height: 4, backgroundColor: '#1e293b', borderRadius: 2 }}>
-              <div style={{ width: '98%', height: '100%', backgroundColor: '#38bdf8', borderRadius: 2, boxShadow: '0 0 8px #38bdf8' }} />
+              <div
+                style={{
+                  width: `${Math.min(100, Math.max(0, riskScore ?? 0))}%`,
+                  height: '100%',
+                  backgroundColor: riskScore !== null && riskScore >= 70 ? '#ef4444' : '#38bdf8',
+                  borderRadius: 2,
+                  boxShadow: '0 0 8px #38bdf8',
+                }}
+              />
             </div>
           </div>
 
-          {/* 2. Impacted Users */}
+          {/* 2. Impacted Callers */}
           <div
             style={{
               padding: '12px 14px',
@@ -170,10 +180,10 @@ export const BlastRadiusPanel: React.FC<BlastRadiusPanelProps> = ({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
                 <Users size={14} color="#38bdf8" />
-                <span>Impacted Users ⓘ</span>
+                <span>Impacted Callers</span>
               </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>
-                12.4k <span style={{ fontSize: 11, fontWeight: 500, color: '#64748b' }}>Users</span>
+                {simResult?.blast_details?.length ?? 0} <span style={{ fontSize: 11, fontWeight: 500, color: '#64748b' }}>Services</span>
               </div>
             </div>
             {/* Sparkline mini SVG */}

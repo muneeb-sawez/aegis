@@ -102,9 +102,9 @@ class Neo4jGraphRepository(GraphRepository):
         return Subgraph(nodes=nodes, edges=edges)
 
     def callers(self, node: str, depth: int = 3) -> list[Caller]:
-        # Walk BACKWARDS along CALLS: (caller)-[:CALLS]->(callee)
+        # Walk BACKWARDS along dependency edges: (caller)-[:CALLS|DEPENDS_ON|CONNECTS_TO]->(callee)
         query = """
-        MATCH path = (caller)-[:CALLS*1..$depth]->(callee {id: $node})
+        MATCH path = (caller)-[:CALLS|DEPENDS_ON|CONNECTS_TO*1..$depth]->(callee {id: $node})
         WITH caller, min(length(path)) AS hops
         RETURN caller.id AS caller_id, hops
         ORDER BY hops ASC, caller_id ASC
