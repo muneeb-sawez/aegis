@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
 [![React Flow](https://img.shields.io/badge/@xyflow/react-12-FF0072.svg?logo=react&logoColor=white)](https://reactflow.dev/)
 [![Graph Backend](https://img.shields.io/badge/Graph-NetworkX%20%7C%20Neo4j-orange.svg)](https://networkx.org/)
-[![Tests](https://img.shields.io/badge/Tests-23%2F23%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-44%2F44%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
 
 **"See every risk before it ships. Heal every failure after it lands."**
@@ -42,8 +42,8 @@ Modern microservice architectures fail when small code changes or breaking API c
 ### 2. Service Health & Chaos Engine (`MONITOR`)
 - **Lightweight Async Health Probes:** Periodic HTTP checks recording status, HTTP codes, latency, and consecutive failures.
 - **SSRF Defense:** Rejects private metadata destinations (e.g. AWS/GCP `169.254.169.254`) and dangerous local loopbacks.
-- **Deterministic Fault Simulation:** Inject timeouts (`504 Gateway Timeout`), latency spikes (~2400 ms), or crash loops (`500 Internal Error`).
-- **Automated Incident Creation:** Exceeding consecutive failure thresholds ($\ge 3$) automatically creates and links an incident record to the target node.
+- **Deterministic Fault Simulation:** Inject timeouts (`504 Gateway Timeout`), latency spikes (~3500 ms), or crash loops (`500 Internal Error`).
+- **Automated Incident Creation:** Exceeding consecutive failure thresholds ($\ge 2$) automatically creates and links an incident record to the target node.
 - **Self-Healing Recovery:** Resetting faults restores services to healthy state and resets failure counters.
 
 ### 3. Repository & Manifest Ingestion
@@ -86,7 +86,7 @@ Modern microservice architectures fail when small code changes or breaking API c
                   ┌────────────────────────────────────────┐
                   │ 3. CHAOS: Deterministic Fault Injector │
                   │  - Timeouts (504) & Latency Spikes     │
-                  │  - Threshold Breaches (≥ 3 Failures)   │
+                  │  - Threshold Breaches (≥ 2 Failures)   │
                   └───────────────────┬────────────────────┘
                                       │
                                       ▼
@@ -214,7 +214,7 @@ aegis/
 │   │   ├── github_fetcher.py    # GitHub REST API fetcher
 │   │   ├── sample_repos.py      # Pre-bundled offline test repositories
 │   │   └── service.py           # Idempotent graph upsert merger
-│   └── tests/                   # 23 pytest integration & unit tests
+│   └── tests/                   # 44 pytest integration & unit tests
 ├── frontend/                    # Mission Control React SPA
 │   ├── src/
 │   │   ├── App.tsx              # Main dashboard layout
@@ -244,7 +244,7 @@ During your evaluation or presentation, follow this 4-step sequence (see [`docs/
 1. **Inspect Active Topology:** Open `http://localhost:5173` to view the 54-node / 142-edge live service canvas.
 2. **Ingest a Repository:** Click **"Ingest Repos"** &rarr; select **`shop-sphere/ecommerce-core`** &rarr; click **"Ingest Topology"** to watch the services merge into the graph dynamically.
 3. **Run PREDICT Analysis:** Click **"Predict Risk"**, select `paymentservice`, choose `Breaking API Contract`, and run analysis. Observe that breaking contract severity ($C=100.0$) triggers a warning and highlights upstream callers (`checkoutservice`, `frontend`) in glowing orange.
-4. **Trigger Fault & Automated Incident:** Click **"Monitor Health"**, select `emailservice`, choose `500 Failure`, and inject. Once failures hit the threshold ($\ge 3$), an automated **Incident Record** is created, raising future risk scores on that service by $+5.0$ points.
+4. **Trigger Fault & Automated Incident:** Click **"Monitor Health"**, select `paymentservice`, choose `Simulated Timeout (504)`, and inject. Once failures hit the threshold ($\ge 2$), an automated **Incident Record** is created, raising future risk scores on that service by $+5.0$ points.
 
 ---
 

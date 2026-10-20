@@ -40,7 +40,7 @@ npm run dev
 ```bash
 python -m pytest backend/tests/ -v
 ```
-*(All 22 unit & integration tests run in under 2 seconds.)*
+*(All 44 unit & integration tests run in under 11 seconds.)*
 
 ---
 
@@ -101,13 +101,13 @@ Follow this sequence during your review demonstration:
    - Click **"Inject Fault"**.
    - Observe that `cartservice` status immediately transitions to **Degraded** with ~2400 ms simulated latency.
 5. **Demonstrate Consecutive Failure Threshold & Incident Trigger:**
-   - Select `emailservice`.
-   - Fault Type: `HTTP 500 Failure (Crash/Unavailable)`.
+   - Select `paymentservice`.
+   - Fault Type: `Consecutive 500 Failures (Threshold Breach)`.
    - Click **"Inject Fault"**.
-   - Show the active alerts table below: Because consecutive failures exceeded the threshold ($\ge 3$), an automated **Incident Record** is created and linked to `emailservice`.
+   - Show the active alerts table below: Because consecutive failures exceeded the threshold ($\ge 2$), an automated **Incident Record** is created and linked to `paymentservice`.
 6. **Demonstrate Recovery:**
-   - Select `emailservice` and click **"Clear Fault (Recover)"**.
-   - Status returns to **Healthy (200 OK)** and consecutive failures reset to 0.
+   - Select `paymentservice` and click **"Clear / Recover"**.
+   - Status returns to **Healthy (200 OK)** and consecutive failures reset to 0 with verified recovery timestamp recorded.
 
 ### Step 5: Closed-Loop Verification (Golden Loop) (30 seconds)
 1. Remind the reviewers of the AEGIS core thesis: **"Predict $\to$ Deploy $\to$ Monitor $\to$ Learn"**.
