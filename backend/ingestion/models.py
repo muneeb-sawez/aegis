@@ -34,6 +34,7 @@ class IngestionRequest(BaseModel):
     repo_url: Optional[str] = None  # e.g. "https://github.com/GoogleCloudPlatform/microservices-demo" or "owner/repo"
     compose_yaml_content: Optional[str] = None  # direct YAML text input
     branch: str = "main"
+    mode: Literal["replace", "merge"] = "replace"
 
 
 class IngestionResult(BaseModel):

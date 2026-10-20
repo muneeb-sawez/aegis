@@ -41,6 +41,7 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
   // Custom form
   const [repoUrl, setRepoUrl] = useState('shop-sphere/ecommerce-core');
   const [yamlContent, setYamlContent] = useState('');
+  const [importMode, setImportMode] = useState<'replace' | 'merge'>('replace');
   const [isLoading, setIsLoading] = useState(false);
   const [resultMessage, setResultMessage] = useState<any>(null);
 
@@ -48,15 +49,39 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
   const [extName, setExtName] = useState('Stripe Payment Gateway');
   const [extCategory, setExtCategory] = useState('Payment Gateway');
   const [extEndpoint, setExtEndpoint] = useState('https://api.stripe.com/v1');
+  const [extHealthUrl, setExtHealthUrl] = useState('https://api.stripe.com/health');
   const [dependentService, setDependentService] = useState('paymentservice');
+  const [availableServices, setAvailableServices] = useState<string[]>([
+    'paymentservice',
+    'checkoutservice',
+    'cartservice',
+    'orderservice',
+    'recommendationservice',
+    'shippingservice',
+    'emailservice',
+    'frontend',
+  ]);
 
-  // Load sample repositories on open
+  // Load sample repositories and active graph services on open
   useEffect(() => {
     if (isOpen) {
       fetch('/api/ingest/sample-repos')
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => setSampleRepos(data))
         .catch((err) => console.error('Failed to load sample repos:', err));
+
+      fetch('/api/predict/services')
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const ids = data.map((s: any) => s.id);
+            setAvailableServices(ids);
+            if (!ids.includes(dependentService)) {
+              setDependentService(ids[0]);
+            }
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen]);
 
@@ -70,7 +95,7 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
       const resp = await fetch('/api/ingest/repository', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: slug }),
+        body: JSON.stringify({ repo_url: slug, mode: importMode }),
       });
       const data = await resp.json();
       if (resp.ok) {
@@ -97,6 +122,7 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
         body: JSON.stringify({
           repo_url: repoUrl || undefined,
           compose_yaml_content: yamlContent || undefined,
+          mode: importMode,
         }),
       });
       const data = await resp.json();
@@ -124,6 +150,7 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
           name: extName,
           category: extCategory,
           endpoint_url: extEndpoint,
+          health_url: extHealthUrl || undefined,
           dependent_service_id: dependentService,
         }),
       });
@@ -320,6 +347,30 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
                 Select any verified test repository below to simulate immediate manifest ingestion. AEGIS parses the multi-service topology, detects dependency directions, and merges the nodes into the active graph.
               </div>
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, backgroundColor: '#070c16', padding: '10px 14px', borderRadius: 8, border: '1px solid #1e293b' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Active Graph Action:</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f8fafc', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="importModeSample"
+                    value="replace"
+                    checked={importMode === 'replace'}
+                    onChange={() => setImportMode('replace')}
+                  />
+                  <span>Replace Active Graph (Load Isolated Topology)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="importModeSample"
+                    value="merge"
+                    checked={importMode === 'merge'}
+                    onChange={() => setImportMode('merge')}
+                  />
+                  <span>Merge into Current Graph</span>
+                </label>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {sampleRepos.map((repo) => (
                   <div
@@ -453,6 +504,30 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
           {/* TAB 2: Custom GitHub Repo or Docker Compose */}
           {activeTab === 'custom' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, backgroundColor: '#070c16', padding: '10px 14px', borderRadius: 8, border: '1px solid #1e293b' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Active Graph Action:</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f8fafc', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="importModeCustom"
+                    value="replace"
+                    checked={importMode === 'replace'}
+                    onChange={() => setImportMode('replace')}
+                  />
+                  <span>Replace Active Graph (Load Isolated Topology)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="importModeCustom"
+                    value="merge"
+                    checked={importMode === 'merge'}
+                    onChange={() => setImportMode('merge')}
+                  />
+                  <span>Merge into Current Graph</span>
+                </label>
+              </div>
+
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#f8fafc', display: 'block', marginBottom: 6 }}>
                   GitHub Repository Slug or URL (REST API Ingestion)
@@ -634,13 +709,13 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
 
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#f8fafc', display: 'block', marginBottom: 6 }}>
-                    Dependent Internal Service
+                    Optional Health Check URL (Probe Target)
                   </label>
                   <input
                     type="text"
-                    value={dependentService}
-                    onChange={(e) => setDependentService(e.target.value)}
-                    placeholder="e.g. paymentservice"
+                    value={extHealthUrl}
+                    onChange={(e) => setExtHealthUrl(e.target.value)}
+                    placeholder="https://api.stripe.com/health"
                     style={{
                       width: '100%',
                       padding: '10px 14px',
@@ -655,6 +730,33 @@ export const IngestionModal: React.FC<IngestionModalProps> = ({
                     }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#f8fafc', display: 'block', marginBottom: 6 }}>
+                  Dependent Internal Microservice (CALLS / DEPENDS_ON Link)
+                </label>
+                <select
+                  value={dependentService}
+                  onChange={(e) => setDependentService(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #1e293b',
+                    color: '#f8fafc',
+                    fontSize: 12,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {availableServices.map((sid) => (
+                    <option key={sid} value={sid}>
+                      {sid}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <button

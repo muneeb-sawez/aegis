@@ -23,13 +23,18 @@ from backend.ingestion.models import (
 def merge_ingested_elements(
     nodes: list[IngestedNode],
     edges: list[IngestedEdge],
+    replace: bool = False,
 ) -> tuple[int, int, int]:
     """Idempotently merge nodes and edges into the active GraphRepository."""
     repo = get_repository()
     # In NetworkX repo or Neo4j repo, update underlying graph
-    # Check if networkx repo
     if hasattr(repo, "_graph"):
         G = repo._graph
+        if replace:
+            G.clear()
+            if hasattr(repo, "_incidents"):
+                repo._incidents.clear()
+
         nodes_added = 0
         nodes_updated = 0
         edges_added = 0
@@ -37,9 +42,10 @@ def merge_ingested_elements(
         for n in nodes:
             if G.has_node(n.id):
                 nodes_updated += 1
-                # Update properties
+                # Update properties and label
                 G.nodes[n.id].update(n.properties)
                 G.nodes[n.id]["provenance"] = n.provenance
+                G.nodes[n.id]["label"] = n.label
             else:
                 nodes_added += 1
                 G.add_node(n.id, label=n.label, provenance=n.provenance, **n.properties)
@@ -100,7 +106,10 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
         raise ValueError("Either 'repo_url' or 'compose_yaml_content' must be provided.")
 
     parsed_nodes, parsed_edges = parse_docker_compose(yaml_content)
-    nodes_added, nodes_updated, edges_added = merge_ingested_elements(parsed_nodes, parsed_edges)
+    replace_graph = req.mode == "replace"
+    nodes_added, nodes_updated, edges_added = merge_ingested_elements(
+        parsed_nodes, parsed_edges, replace=replace_graph
+    )
 
     repo = get_repository()
     current_topo = repo.get_topology()
@@ -121,6 +130,14 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
 def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any]:
     """Manually register an external vendor or API (e.g. Stripe, SendGrid)."""
     repo = get_repository()
+    topo = repo.get_topology()
+    node_ids = {n.id for n in topo.nodes}
+
+    if reg.dependent_service_id not in node_ids:
+        raise ValueError(
+            f"Dependent service '{reg.dependent_service_id}' does not exist in the active graph topology."
+        )
+
     ext_node_id = f"ext-{reg.name.lower().replace(' ', '-')}"
 
     ext_node = IngestedNode(
@@ -146,7 +163,16 @@ def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any
         provenance="manual",
     )
 
-    nodes_added, _, edges_added = merge_ingested_elements([ext_node], [dep_edge])
+    nodes_added, _, edges_added = merge_ingested_elements([ext_node], [dep_edge], replace=False)
+
+    # If health_url or endpoint_url configured, register with monitor
+    if reg.health_url or reg.endpoint_url:
+        try:
+            from backend.monitor.health_checker import get_health_checker
+            checker = get_health_checker()
+            checker.configure_endpoint(ext_node_id, str(reg.health_url or reg.endpoint_url))
+        except Exception:
+            pass
 
     return {
         "status": "success",

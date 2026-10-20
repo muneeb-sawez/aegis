@@ -258,6 +258,7 @@ export function App() {
         setEdgeCount(topoEdges.length);
 
         if (topoNodes.length > 0) {
+          const isLargeSeededGraph = topoNodes.length > 20;
           const knownMap: Record<string, { x: number; y: number; type?: string }> = {
             'internet': { x: 440, y: 30, type: 'serviceNode' },
             'route53': { x: 250, y: 90, type: 'serviceNode' },
@@ -277,9 +278,13 @@ export function App() {
             'dba-role': { x: 660, y: 550, type: 'iamRoleNode' },
           };
 
+          const cols = Math.min(4, Math.max(2, Math.ceil(Math.sqrt(topoNodes.length))));
+
           const dynamicNodes: Node[] = topoNodes.map((n: any, idx: number) => {
-            const known = knownMap[n.id];
-            let pos = { x: 140 + (idx % 5) * 160, y: 140 + Math.floor(idx / 5) * 110 };
+            const known = isLargeSeededGraph ? knownMap[n.id] : undefined;
+            const col = idx % cols;
+            const row = Math.floor(idx / cols);
+            let pos = { x: 100 + col * 250, y: 80 + row * 150 };
             let nodeType = 'serviceNode';
 
             if (known) {
@@ -287,33 +292,41 @@ export function App() {
               if (known.type) nodeType = known.type;
             } else {
               if (n.label === 'Database') nodeType = 'serviceNode';
+              else if (n.label === 'ExternalService' || n.id.startsWith('ext-')) nodeType = 'serviceNode';
               else if (n.id.includes('gateway') || n.id.includes('checkout') || n.id.includes('payment')) nodeType = 'criticalNode';
             }
 
             const isCritical = nodeType === 'criticalNode';
+            const isExternal = n.label === 'ExternalService' || n.id.startsWith('ext-');
+            const isDb = n.label === 'Database';
+
+            const badge = isCritical ? 'CRITICAL' : isExternal ? 'EXTERNAL' : isDb ? 'DATABASE' : undefined;
+            const iconType = isDb ? 'db' : (isExternal || n.id.includes('gateway')) ? 'gateway' : 'service';
+
             return {
               id: n.id,
               type: nodeType,
               position: pos,
               data: {
                 label: n.id,
-                sublabel: n.label || 'Service',
-                iconType: n.label === 'Database' ? 'db' : (n.id.includes('gateway') ? 'gateway' : 'service'),
+                sublabel: n.properties?.name || n.label || 'Service',
+                iconType,
                 status: isCritical ? 'critical' : 'normal',
-                badge: isCritical ? 'CRITICAL' : (n.label === 'Database' ? 'DB' : undefined),
-                subnets: ['Private Subnet 10.0.1.0/24', 'Public Subnet 10.0.2.0/24'],
+                badge,
+                subnets: isExternal ? ['Public Internet / SaaS'] : ['Private Subnet 10.0.1.0/24', 'Public Subnet 10.0.2.0/24'],
               },
             };
           });
 
           const dynamicEdges: Edge[] = topoEdges.map((e: any, idx: number) => {
-            const isCritical = e.type === 'CALLS';
+            const isCall = e.type === 'CALLS';
+            const isDepends = e.type === 'DEPENDS_ON';
             return {
               id: `e-${e.source}-${e.target}-${idx}`,
               source: e.source,
               target: e.target,
-              className: isCritical ? 'edge-critical' : 'edge-dependency',
-              animated: isCritical,
+              className: isCall ? 'edge-critical' : isDepends ? 'edge-dependency' : 'edge-containment',
+              animated: isCall,
             };
           });
 
@@ -431,11 +444,10 @@ export function App() {
       const resp = await fetch('/api/ingest/repository', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: slug }),
+        body: JSON.stringify({ repo_url: slug, mode: 'replace' }),
       });
       if (resp.ok) {
         await loadTopology();
-        alert(`Successfully scanned & ingested ${slug}! Graph updated.`);
       }
     } catch (e) {
       console.error('Quick ingest error:', e);
