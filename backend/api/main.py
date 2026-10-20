@@ -36,7 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount all domain routers
+import os
+from fastapi.staticfiles import StaticFiles
+
 app.include_router(graph_router)
 app.include_router(sim_router)
 app.include_router(chaos_router)
@@ -46,8 +48,29 @@ app.include_router(monitor_router)
 app.include_router(predict_router)
 
 
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "AEGIS", "version": "0.2.0"}
+
+
+dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
+assets_dir = os.path.join(dist_dir, "assets")
+
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+
 @app.get("/")
-def read_root():
+def read_root(request: Request):
+    accept = request.headers.get("accept", "")
+    index_file = os.path.join(dist_dir, "index.html")
+    if "text/html" in accept and os.path.exists(index_file):
+        return FileResponse(index_file)
+
     return {
         "system": "AEGIS",
         "motto": "See every risk before it ships. Heal every failure after it lands.",
@@ -60,4 +83,5 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.api.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.api.main:app", host="0.0.0.0", port=port, reload=True)
