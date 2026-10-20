@@ -182,8 +182,9 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
     >
       <div
         style={{
-          width: 960,
-          maxHeight: '92vh',
+          width: 980,
+          height: '88vh',
+          maxHeight: '88vh',
           backgroundColor: '#0a101d',
           border: '1px solid #1e293b',
           borderRadius: 14,
@@ -201,6 +202,7 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -279,10 +281,11 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Fault Simulation Controls */}
           <div
             style={{
+              flexShrink: 0,
               padding: '14px 16px',
               borderRadius: 10,
               backgroundColor: '#070c16',
@@ -384,6 +387,7 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
           {/* Endpoint Configuration Bar */}
           <div
             style={{
+              flexShrink: 0,
               padding: '10px 14px',
               borderRadius: 8,
               backgroundColor: '#0a101d',
@@ -458,13 +462,13 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
           </div>
 
           {configError && (
-            <div style={{ padding: '8px 12px', borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', fontSize: 11 }}>
+            <div style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', fontSize: 11 }}>
               {configError}
             </div>
           )}
 
           {configSuccess && (
-            <div style={{ padding: '8px 12px', borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: 11 }}>
+            <div style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: 11 }}>
               {configSuccess}
             </div>
           )}
@@ -472,14 +476,16 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({ isOpen, onClose, onA
           {/* Health Records Table */}
           <div
             style={{
+              flex: 1,
+              minHeight: 260,
+              overflowY: 'auto',
               borderRadius: 10,
               backgroundColor: '#070c16',
               border: '1px solid #1e293b',
-              overflow: 'hidden',
             }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 11 }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
                   <th style={{ padding: '10px 14px' }}>Service</th>
                   <th style={{ padding: '10px 14px' }}>Endpoint</th>
