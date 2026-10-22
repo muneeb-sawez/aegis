@@ -24,53 +24,63 @@ def merge_ingested_elements(
     nodes: list[IngestedNode],
     edges: list[IngestedEdge],
     replace: bool = False,
+    project_id: str = "demo",
 ) -> tuple[int, int, int]:
     """Idempotently merge nodes and edges into the active GraphRepository."""
     repo = get_repository()
     # In NetworkX repo or Neo4j repo, update underlying graph
-    if hasattr(repo, "_graph"):
+    if hasattr(repo, "_get_project_graph"):
+        G = repo._get_project_graph(project_id)
+    elif hasattr(repo, "_graph"):
         G = repo._graph
-        if replace:
-            G.clear()
-            if hasattr(repo, "_incidents"):
-                repo._incidents.clear()
+    else:
+        return len(nodes), 0, len(edges)
 
-        nodes_added = 0
-        nodes_updated = 0
-        edges_added = 0
+    if replace:
+        G.clear()
+        if hasattr(repo, "_incidents"):
+            repo._incidents = [inc for inc in repo._incidents if getattr(inc, "project_id", "demo") != project_id]
 
-        for n in nodes:
-            if G.has_node(n.id):
-                nodes_updated += 1
-                # Update properties and label
-                G.nodes[n.id].update(n.properties)
-                G.nodes[n.id]["provenance"] = n.provenance
-                G.nodes[n.id]["label"] = n.label
-            else:
-                nodes_added += 1
-                G.add_node(n.id, label=n.label, provenance=n.provenance, **n.properties)
+    nodes_added = 0
+    nodes_updated = 0
+    edges_added = 0
 
-        for e in edges:
-            # Ensure target exists
-            if not G.has_node(e.target):
-                G.add_node(e.target, label="Service", provenance="inferred")
-                nodes_added += 1
+    for n in nodes:
+        n_props = {
+            k_prop: v_prop for k_prop, v_prop in n.properties.items()
+            if k_prop not in ("project_id", "label", "provenance")
+        }
+        if G.has_node(n.id):
+            nodes_updated += 1
+            G.nodes[n.id].update(n_props)
+            G.nodes[n.id]["provenance"] = n.provenance
+            G.nodes[n.id]["label"] = n.label
+            G.nodes[n.id]["project_id"] = project_id
+        else:
+            nodes_added += 1
+            G.add_node(n.id, label=n.label, provenance=n.provenance, project_id=project_id, **n_props)
 
-            # Check if edge already exists with same type
-            edge_exists = False
-            if G.has_edge(e.source, e.target):
-                for attrs in G.get_edge_data(e.source, e.target).values():
-                    if attrs.get("type") == e.type:
-                        edge_exists = True
-                        break
+    for e in edges:
+        if not G.has_node(e.target):
+            G.add_node(e.target, label="Service", provenance="inferred", project_id=project_id)
+            nodes_added += 1
 
-            if not edge_exists:
-                edges_added += 1
-                G.add_edge(e.source, e.target, type=e.type, provenance=e.provenance, **e.properties)
+        edge_exists = False
+        if G.has_edge(e.source, e.target):
+            for attrs in G.get_edge_data(e.source, e.target).values():
+                if attrs.get("type") == e.type:
+                    edge_exists = True
+                    break
 
-        return nodes_added, nodes_updated, edges_added
+        if not edge_exists:
+            edges_added += 1
+            e_props = {
+                k_prop: v_prop for k_prop, v_prop in e.properties.items()
+                if k_prop not in ("project_id", "type", "provenance")
+            }
+            G.add_edge(e.source, e.target, type=e.type, provenance=e.provenance, project_id=project_id, **e_props)
 
-    return len(nodes), 0, len(edges)
+    return nodes_added, nodes_updated, edges_added
 
 
 async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResult:
@@ -108,11 +118,11 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
     parsed_nodes, parsed_edges = parse_docker_compose(yaml_content)
     replace_graph = req.mode == "replace"
     nodes_added, nodes_updated, edges_added = merge_ingested_elements(
-        parsed_nodes, parsed_edges, replace=replace_graph
+        parsed_nodes, parsed_edges, replace=replace_graph, project_id=req.project_id
     )
 
     repo = get_repository()
-    current_topo = repo.get_topology()
+    current_topo = repo.get_topology(project_id=req.project_id)
 
     return IngestionResult(
         status="success",
@@ -124,13 +134,14 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
         total_graph_nodes=len(current_topo.nodes),
         total_graph_edges=len(current_topo.edges),
         services_discovered=[n.id for n in parsed_nodes],
+        project_id=req.project_id,
     )
 
 
 def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any]:
     """Manually register an external vendor or API (e.g. Stripe, SendGrid)."""
     repo = get_repository()
-    topo = repo.get_topology()
+    topo = repo.get_topology(project_id=reg.project_id)
     node_ids = {n.id for n in topo.nodes}
 
     if reg.dependent_service_id not in node_ids:
@@ -153,6 +164,7 @@ def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any
             "description": reg.description,
         },
         provenance="manual",
+        project_id=reg.project_id,
     )
 
     dep_edge = IngestedEdge(
@@ -161,9 +173,12 @@ def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any
         type="DEPENDS_ON",
         properties={"criticality": "high", "is_external": True},
         provenance="manual",
+        project_id=reg.project_id,
     )
 
-    nodes_added, _, edges_added = merge_ingested_elements([ext_node], [dep_edge], replace=False)
+    nodes_added, _, edges_added = merge_ingested_elements(
+        [ext_node], [dep_edge], replace=False, project_id=reg.project_id
+    )
 
     # If health_url or endpoint_url configured, register with monitor
     if reg.health_url or reg.endpoint_url:
@@ -180,5 +195,6 @@ def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any
         "dependent_service": reg.dependent_service_id,
         "nodes_added": nodes_added,
         "edges_added": edges_added,
+        "project_id": reg.project_id,
         "message": f"External service '{reg.name}' registered and linked to '{reg.dependent_service_id}'.",
     }

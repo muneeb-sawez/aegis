@@ -26,3 +26,17 @@ FOR (s:Service) ON (s.name);
 
 CREATE INDEX incident_timestamp_idx IF NOT EXISTS
 FOR (i:Incident) ON (i.timestamp);
+
+// Project multi-tenancy indexes
+CREATE INDEX service_project_idx IF NOT EXISTS
+FOR (s:Service) ON (s.project_id);
+
+CREATE INDEX incident_project_idx IF NOT EXISTS
+FOR (i:Incident) ON (i.project_id);
+
+CREATE INDEX decision_project_idx IF NOT EXISTS
+FOR (dec:Decision) ON (dec.project_id);
+
+CREATE INDEX outcome_project_idx IF NOT EXISTS
+FOR (o:Outcome) ON (o.project_id);
+

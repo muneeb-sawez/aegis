@@ -74,6 +74,7 @@ def log_agent_run(
 async def stream_diagnosis_events(
     incident_id: str = "",
     repo: Optional[GraphRepository] = None,
+    project_id: str = "demo",
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Generate real-time diagnosis SSE events for a target incident.
 
@@ -97,7 +98,7 @@ async def stream_diagnosis_events(
     await asyncio.sleep(0.05)
 
     # Step 2: Build graph context & emit Query event
-    context = build_context(incident_id, repo=repo)
+    context = build_context(incident_id, repo=repo, project_id=project_id)
     failing_node = context.get("failing_node", "paymentservice")
     n2 = context.get("neighbourhood_2hop", {})
     nodes = n2.get("nodes", [])

@@ -42,6 +42,7 @@ def build_context(
     incident_id: str,
     repo: Optional[GraphRepository] = None,
     max_tokens: int = MAX_CONTEXT_TOKENS,
+    project_id: str = "demo",
 ) -> dict[str, Any]:
     """Construct token-capped graph context for an incident using only GraphRepository.
 
@@ -49,6 +50,7 @@ def build_context(
         incident_id: ID of the incident (or direct failing service ID).
         repo: GraphRepository instance (defaults to get_repository()).
         max_tokens: Upper bound on estimated prompt tokens (default: 3000).
+        project_id: Multi-tenant project identifier (default: "demo").
 
     Returns:
         dict containing failing_node, neighbourhood_2hop, telemetry,
@@ -58,14 +60,14 @@ def build_context(
         repo = get_repository()
 
     # 1. Resolve failing node and active incident using GraphRepository
-    all_incidents = repo.incidents(days=365)
+    all_incidents = repo.incidents(days=365, project_id=project_id)
     matched_incident = next((inc for inc in all_incidents if inc.id == incident_id), None)
 
     if matched_incident is not None:
         failing_node = matched_incident.service_id
     elif incident_id:
         # Check if incident_id matches a node ID directly in the graph
-        topology = repo.get_topology()
+        topology = repo.get_topology(project_id=project_id)
         existing_node = next((n for n in topology.nodes if n.id == incident_id), None)
         if existing_node is not None:
             failing_node = existing_node.id
@@ -77,12 +79,12 @@ def build_context(
             failing_node = all_incidents[-1].service_id
             incident_id = all_incidents[-1].id
         else:
-            topology = repo.get_topology()
+            topology = repo.get_topology(project_id=project_id)
             failing_node = "paymentservice" if any(n.id == "paymentservice" for n in topology.nodes) else (topology.nodes[0].id if topology.nodes else "")
             incident_id = "inc-default"
 
     # 2. Extract 2-hop neighbourhood via GraphRepository.neighbors(hops=2)
-    subgraph = repo.neighbors(failing_node, hops=2)
+    subgraph = repo.neighbors(failing_node, hops=2, project_id=project_id)
 
     # Filter topology nodes: exclude Incident / Decision ledger nodes from structural topology
     topology_nodes = [
@@ -100,7 +102,7 @@ def build_context(
         neighbourhood_node_ids.add(failing_node)
 
     # Callers walking backwards along CALLS edges via GraphRepository.callers(depth=2)
-    caller_records = repo.callers(failing_node, depth=2)
+    caller_records = repo.callers(failing_node, depth=2, project_id=project_id)
     callers = [c.node for c in caller_records]
     # Also include any upstream nodes that have direct edges to failing_node in topology_edges
     for edge in topology_edges:
@@ -139,7 +141,7 @@ def build_context(
 
     # If failing_node was missing from topology nodes, populate from get_topology()
     if failing_node and failing_node not in telemetry:
-        topo = repo.get_topology()
+        topo = repo.get_topology(project_id=project_id)
         fn_node = next((n for n in topo.nodes if n.id == failing_node), None)
         if fn_node:
             telemetry[failing_node] = dict(fn_node.properties)
@@ -166,7 +168,31 @@ def build_context(
     resolved_incidents.sort(key=lambda x: x.timestamp, reverse=True)
     past_incidents = [inc.model_dump() for inc in resolved_incidents[:5]]
 
-    # 5. Cap to max_tokens (~3000 tokens), truncating oldest incidents first
+    # 5. Similar past incidents (top-3 by embedding/keyword similarity)
+    similar_incidents: list[dict] = []
+    try:
+        from backend.feedback.similarity import find_similar_incidents
+        # Use the failing node's most recent incident description as query
+        current_description = ""
+        if matched_incident:
+            current_description = matched_incident.description
+        elif past_incidents:
+            current_description = past_incidents[0].get("description", "")
+        else:
+            current_description = f"Service {failing_node} experiencing anomaly"
+
+        all_inc_dicts = repo.get_all_incidents_with_descriptions(days=90, project_id=project_id)
+        similar_incidents = find_similar_incidents(
+            query_description=current_description,
+            all_incidents=all_inc_dicts,
+            top_k=3,
+            exclude_id=incident_id,
+        )
+    except Exception:
+        # Similarity is best-effort; never crash context building
+        similar_incidents = []
+
+    # 6. Cap to max_tokens (~3000 tokens), truncating oldest incidents first
     ctx: dict[str, Any] = {
         "incident_id": incident_id,
         "failing_node": failing_node,
@@ -180,26 +206,39 @@ def build_context(
         "telemetry": telemetry,
         "open_incidents": open_incidents,
         "past_incidents": past_incidents,
+        "similar_incidents": similar_incidents,  # top-3 by embedding cosine similarity
     }
 
     # Measure tokens
     serialized = _serialize_payload(ctx)
     tokens = count_tokens(serialized)
 
-    # Stage 1: Truncate oldest past incidents first until within token cap
+    # Stage 1: Trim similar_incidents to 1 item (supplementary — prune first)
+    while tokens > max_tokens and len(ctx.get("similar_incidents", [])) > 1:
+        ctx["similar_incidents"] = ctx["similar_incidents"][:1]
+        serialized = _serialize_payload(ctx)
+        tokens = count_tokens(serialized)
+
+    # Stage 2: Drop similar_incidents entirely
+    if tokens > max_tokens and ctx.get("similar_incidents"):
+        ctx["similar_incidents"] = []
+        serialized = _serialize_payload(ctx)
+        tokens = count_tokens(serialized)
+
+    # Stage 3: Truncate oldest past incidents first until within token cap
     while tokens > max_tokens and ctx["past_incidents"]:
         # Pop oldest incident (last in newest-first list)
         ctx["past_incidents"].pop(-1)
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 2: If still exceeding cap, truncate open incidents (oldest first)
+    # Stage 4: If still exceeding cap, truncate open incidents (oldest first)
     while tokens > max_tokens and ctx["open_incidents"]:
         ctx["open_incidents"].pop(-1)
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 3: If still exceeding cap, trim long description strings from incidents
+    # Stage 5: If still exceeding cap, trim long description strings from incidents
     if tokens > max_tokens:
         for inc_list in (ctx["past_incidents"], ctx["open_incidents"]):
             for inc in inc_list:
@@ -208,7 +247,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 4: If still exceeding cap, strip node properties from neighbourhood nodes
+    # Stage 6: If still exceeding cap, strip node properties from neighbourhood nodes
     # (telemetry dictionary already contains the metrics)
     if tokens > max_tokens:
         for node_item in ctx["neighbourhood_2hop"]["nodes"]:
@@ -216,7 +255,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 5: If still exceeding cap, strip edge properties
+    # Stage 7: If still exceeding cap, strip edge properties
     if tokens > max_tokens:
         ctx["neighbourhood_2hop"]["edges"] = [
             {"source": e["source"], "target": e["target"], "type": e["type"]}
@@ -225,7 +264,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 6: If still exceeding cap, prune edges to CALLS and DEPENDS_ON
+    # Stage 8: If still exceeding cap, prune edges to CALLS and DEPENDS_ON
     if tokens > max_tokens:
         ctx["neighbourhood_2hop"]["edges"] = [
             e for e in ctx["neighbourhood_2hop"]["edges"]
@@ -234,7 +273,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 7: If still exceeding cap, prune edges to direct connections
+    # Stage 9: If still exceeding cap, prune edges to direct connections
     if tokens > max_tokens:
         ctx["neighbourhood_2hop"]["edges"] = [
             e for e in ctx["neighbourhood_2hop"]["edges"]
@@ -243,7 +282,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 8: If still exceeding cap, prune telemetry properties to essential metrics and priority services
+    # Stage 10: If still exceeding cap, prune telemetry properties to essential metrics and priority services
     if tokens > max_tokens:
         priority_nodes = set(callers).union(set(callees)).union(set(datastores)).union({failing_node})
         ctx["telemetry"] = {
@@ -254,7 +293,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 9: If still exceeding cap, prune nodes to priority core services and datastores
+    # Stage 11: If still exceeding cap, prune nodes to priority core services and datastores
     if tokens > max_tokens:
         priority_nodes = set(callers).union(set(callees)).union(set(datastores)).union({failing_node})
         ctx["neighbourhood_2hop"]["nodes"] = [
@@ -264,7 +303,7 @@ def build_context(
         serialized = _serialize_payload(ctx)
         tokens = count_tokens(serialized)
 
-    # Stage 10: If still exceeding cap, keep only immediate callers and callees
+    # Stage 12: If still exceeding cap, keep only immediate callers and callees
     if tokens > max_tokens:
         ctx["neighbourhood_2hop"]["callers"] = [
             c for c in ctx["neighbourhood_2hop"]["callers"]

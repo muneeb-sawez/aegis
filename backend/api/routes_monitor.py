@@ -2,10 +2,12 @@ import asyncio
 from datetime import datetime, timezone
 import json
 from typing import Any, Optional
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from backend.auth.dependencies import require_api_key
+from backend.auth.store import ProjectRecord
 from backend.monitor.health_checker import (
     FaultSimulationRequest,
     HealthChecker,
@@ -90,21 +92,29 @@ def get_monitor_status() -> list[ServiceHealthRecord]:
 
 
 @router.post("/check-now", response_model=list[ServiceHealthRecord])
-async def trigger_health_check() -> list[ServiceHealthRecord]:
+async def trigger_health_check(
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> list[ServiceHealthRecord]:
     """Trigger an immediate asynchronous health check cycle across all services."""
     checker = get_health_checker()
     return await checker.check_all_services()
 
 
 @router.post("/fault", response_model=ServiceHealthRecord)
-def simulate_fault(req: FaultSimulationRequest) -> ServiceHealthRecord:
+def simulate_fault(
+    req: FaultSimulationRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> ServiceHealthRecord:
     """Inject or clear a simulated fault (timeout, elevated latency, consecutive failure)."""
     checker = get_health_checker()
     return checker.set_fault(req)
 
 
 @router.post("/configure")
-def configure_service_endpoint(req: ConfigureEndpointRequest) -> dict[str, Any]:
+def configure_service_endpoint(
+    req: ConfigureEndpointRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> dict[str, Any]:
     """Configure or update the monitored health endpoint for a service."""
     checker = get_health_checker()
     try:
@@ -115,7 +125,10 @@ def configure_service_endpoint(req: ConfigureEndpointRequest) -> dict[str, Any]:
 
 
 @router.post("/unconfigure")
-def unconfigure_service_endpoint(service_id: str) -> dict[str, Any]:
+def unconfigure_service_endpoint(
+    service_id: str,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> dict[str, Any]:
     """Remove a service's monitored endpoint, reverting it to unconfigured."""
     checker = get_health_checker()
     checker.unconfigure_endpoint(service_id)

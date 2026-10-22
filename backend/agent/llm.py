@@ -69,8 +69,8 @@ def call_llm(
     except Exception as e:
         logger.warning(f"Primary LLM provider call failed ({e}). Attempting next provider in chain.")
 
-    # 2. Secondary Attempt: Local Ollama (if configured)
-    if settings.OLLAMA_BASE_URL:
+    # 2. Secondary Attempt: Local Ollama (if provider is ollama or explicitly selected)
+    if settings.OLLAMA_BASE_URL and settings.LLM_PROVIDER.lower() == "ollama":
         try:
             ollama_model = "ollama/llama3"
             logger.info(f"Calling fallback Ollama provider at '{settings.OLLAMA_BASE_URL}' (timeout={timeout}s)")

@@ -41,6 +41,7 @@ def simulate_pr(req: SimulatePRRequest) -> SimulatePRResponse:
             id=target_pr_data.get("pr_id") or target_pr_data.get("id") or "PR-CUSTOM",
             title=target_pr_data.get("title", "Simulated Change"),
             target_service=target_pr_data.get("target_service", req.target_service),
+            project_id=req.project_id,
             author=target_pr_data.get("author", "engineer@company.com"),
             description=target_pr_data.get("description", ""),
             old_schema=target_pr_data.get("old_schema"),
@@ -50,13 +51,15 @@ def simulate_pr(req: SimulatePRRequest) -> SimulatePRResponse:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid PR payload: {e}")
 
-    result = assess_change_risk(pr_payload, repo)
+    result = assess_change_risk(pr_payload, repo, project_id=req.project_id)
 
     return SimulatePRResponse(
         pr_id=result.pr_id,
         target_service=result.target_service,
+        project_id=req.project_id,
         risk_score=result.risk_score,
         verdict=result.verdict,  # type: ignore
+
         breakdown=result.breakdown,
         blast_details=result.blast_details,
         contract_diff=result.contract_diff,

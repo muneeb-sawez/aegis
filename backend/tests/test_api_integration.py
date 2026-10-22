@@ -14,8 +14,9 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.api.main import app
+from backend.auth.store import DEFAULT_DEMO_API_KEY
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-API-Key": DEFAULT_DEMO_API_KEY})
 
 
 def test_api_root_and_docs():

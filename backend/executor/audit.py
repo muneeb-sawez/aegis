@@ -73,6 +73,7 @@ class DecisionRecord(BaseModel):
     recovery_score: float
     composite_score: float
     status: DecisionStatus
+    project_id: str = "demo"
     reason: str
     reasoning_trace: list[str] = Field(default_factory=list)  # evidence from RCA
     result: dict[str, Any] = Field(default_factory=dict)      # actuator response
@@ -80,6 +81,7 @@ class DecisionRecord(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     emulated: bool = True  # honesty label — Phase 1 is always emulated
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -163,10 +165,12 @@ def update_decision(decision_id: str, **fields: Any) -> bool:
     return False
 
 
-def get_all_decisions() -> list[dict[str, Any]]:
-    """Return a snapshot of all in-memory decisions (used by GET /api/decisions)."""
+def get_all_decisions(project_id: str = "demo") -> list[dict[str, Any]]:
+    """Return a snapshot of in-memory decisions for project_id (used by GET /api/decisions)."""
     with _DECISIONS_LOCK:
-        return list(_DECISIONS)
+        if not project_id or project_id == "*":
+            return list(_DECISIONS)
+        return [d for d in _DECISIONS if d.get("project_id", "demo") == project_id]
 
 
 def persist_to_graph(record: DecisionRecord) -> None:
@@ -175,13 +179,23 @@ def persist_to_graph(record: DecisionRecord) -> None:
     This is the M8 feedback loop: incidents written here are seen by the next
     PR simulation and increase the risk score.
 
+    Graph relationships:
+      Incident -[:OCCURRED_IN]->  Service
+      Decision -[:RESOLVED_BY]->  Incident
+      Decision -[:RESULTED_IN]->  Outcome   ← new (M8)
+      Outcome  -[:OCCURRED_IN]->  Service   ← new (M8)
+
     SAFETY CHECK 17: Graph write is best-effort; failures are logged but do not
     abort the audit pipeline.
     """
     try:
         from backend.graph import get_repository
+        from backend.feedback.writer import write_outcome
+
         repo = get_repository()
-        repo.add_incident(
+
+        # 1. Write Incident + Decision node (existing behaviour)
+        incident = repo.add_incident(
             service_id=record.service_id,
             description=(
                 f"[executor] {record.action} on {record.service_id} "
@@ -193,12 +207,31 @@ def persist_to_graph(record: DecisionRecord) -> None:
                 "safety_score": record.safety_score,
                 "composite_score": record.composite_score,
                 "outcome": record.status,
+                "project_id": record.project_id,
             },
+            project_id=record.project_id,
         )
+
+        # 2. Write Outcome node + RESULTED_IN edge (M8 feedback loop)
+        write_outcome(
+            decision_id=record.decision_id,
+            incident_id=incident.id,
+            service_id=record.service_id,
+            fault_type=record.fault_type,
+            action=record.action,
+            status=record.status,
+            safety_score=record.safety_score,
+            composite_score=record.composite_score,
+            project_id=record.project_id,
+            repo=repo,
+        )
+
+
         logger.info(
-            "AUDIT_GRAPH_PERSISTED decision_id=%r service=%r",
+            "AUDIT_GRAPH_PERSISTED decision_id=%r service=%r incident=%r",
             record.decision_id,
             record.service_id,
+            incident.id,
         )
     except Exception as exc:
         # SAFETY CHECK 17: Graph failure must not prevent the audit from completing.
@@ -207,3 +240,4 @@ def persist_to_graph(record: DecisionRecord) -> None:
             record.decision_id,
             exc,
         )
+

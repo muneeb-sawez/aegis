@@ -16,13 +16,15 @@ def calculate_blast_radius(
     service_id: str,
     repo: GraphRepository,
     config: RiskConfig = DEFAULT_CONFIG,
+    project_id: str = "demo",
 ) -> tuple[float, list[Caller], list[dict[str, Any]]]:
     """Calculate normalized blast radius score (B in [0, 100]) and list of affected callers.
 
     Returns:
         (b_score, callers, caller_details)
     """
-    callers = repo.callers(service_id, depth=config.blast_max_depth)
+    callers = repo.callers(service_id, depth=config.blast_max_depth, project_id=project_id)
+
 
     # Sum the attenuated weights
     raw_impact = sum(c.impact_weight for c in callers)

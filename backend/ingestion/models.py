@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class IngestedNode(BaseModel):
     id: str
     label: Literal["Service", "Database", "ExternalService", "APIEndpoint", "Pod"]
+    project_id: str = "demo"
     properties: dict[str, Any] = Field(default_factory=dict)
     provenance: Literal["manifest", "inferred", "manual"] = "manifest"
 
@@ -17,6 +18,7 @@ class IngestedEdge(BaseModel):
     source: str
     target: str
     type: Literal["CALLS", "DEPENDS_ON", "EXPOSES", "INSTANCE_OF"] = "DEPENDS_ON"
+    project_id: str = "demo"
     properties: dict[str, Any] = Field(default_factory=dict)
     provenance: Literal["manifest", "inferred", "manual"] = "manifest"
 
@@ -28,6 +30,7 @@ class ExternalServiceRegistration(BaseModel):
     health_url: Optional[str] = None
     dependent_service_id: str
     description: str = ""
+    project_id: str = "demo"
 
 
 class IngestionRequest(BaseModel):
@@ -35,6 +38,7 @@ class IngestionRequest(BaseModel):
     compose_yaml_content: Optional[str] = None  # direct YAML text input
     branch: str = "main"
     mode: Literal["replace", "merge"] = "replace"
+    project_id: str = "demo"
 
 
 class IngestionResult(BaseModel):
@@ -47,3 +51,4 @@ class IngestionResult(BaseModel):
     total_graph_nodes: int
     total_graph_edges: int
     services_discovered: list[str] = Field(default_factory=list)
+    project_id: str = "demo"

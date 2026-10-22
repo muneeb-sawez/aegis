@@ -49,7 +49,8 @@ def test_audit_monitoring_initial_status_is_pending():
 
 def test_audit_monitoring_probe_and_fault_endpoints():
     """Verify /api/monitor/probe/{service_id} and /api/monitor/fault work accurately."""
-    client = TestClient(app)
+    from backend.auth.store import DEFAULT_DEMO_API_KEY
+    client = TestClient(app, headers={"X-API-Key": DEFAULT_DEMO_API_KEY})
 
     # 1. Probe individual service endpoint
     resp = client.get("/api/monitor/probe/paymentservice")

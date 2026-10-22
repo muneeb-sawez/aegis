@@ -17,3 +17,8 @@ dist/
 # Environment & Secrets
 .env
 *.jsonl
+*.key
+.master.key
+data/endpoints.json
+data/projects.json
+data/webhook_deliveries.json

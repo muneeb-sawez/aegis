@@ -4,6 +4,7 @@ Provides an in-memory, zero-external-dependency implementation of GraphRepositor
 Strictly respects:
 - CALLS direction: caller -> callee
 - Backwards BFS traversal for callers
+- Project isolation: multi-tenant partitioned graphs per project_id (default 'demo')
 - Frozen interface contracts in docs/02-CONTRACTS.md §3
 """
 
@@ -20,6 +21,7 @@ from backend.graph.repository import (
     GraphRepository,
     Incident,
     Node,
+    Outcome,
     Subgraph,
     Topology,
 )
@@ -27,105 +29,149 @@ from backend.graph.seed import load_topology_yaml
 
 
 class NetworkXGraphRepository(GraphRepository):
-    """NetworkX-based implementation of GraphRepository."""
+    """NetworkX-based multi-tenant implementation of GraphRepository."""
 
     def __init__(self, topology_path: Optional[str] = None):
         self.topology_path = topology_path
-        self._graph = nx.MultiDiGraph()
+        self._graphs: dict[str, nx.MultiDiGraph] = {}
         self._incidents: list[Incident] = []
         self._decisions: list[dict[str, Any]] = []
+        self._outcomes: list[Outcome] = []
         self._initial_data: Optional[dict[str, Any]] = None
-        self.reset()
+        self.reset(project_id="demo")
 
-    def reset(self) -> None:
-        """Restore graph to clean baseline topology from data/topology.yaml."""
-        if self._initial_data is None:
-            self._initial_data = load_topology_yaml(self.topology_path) if self.topology_path else load_topology_yaml()
+    @property
+    def _graph(self) -> nx.MultiDiGraph:
+        """Backwards compatibility for tests or callers directly accessing ._graph for demo project."""
+        if "demo" not in self._graphs:
+            self.seed_project("demo")
+        return self._graphs["demo"]
 
-        self._graph.clear()
-        self._incidents.clear()
-        self._decisions.clear()
+    def _get_project_graph(self, project_id: str) -> nx.MultiDiGraph:
+        """Retrieve or initialize the isolated MultiDiGraph for project_id."""
+        if project_id not in self._graphs:
+            self.seed_project(project_id)
+        return self._graphs[project_id]
 
-        # Deep copy to ensure fresh state
-        data = copy.deepcopy(self._initial_data)
+    def seed_project(self, project_id: str = "demo", data: Optional[dict[str, Any]] = None) -> None:
+        """Seed a project's isolated graph from data (or baseline topology)."""
+        if data is None:
+            if self._initial_data is None:
+                self._initial_data = load_topology_yaml(self.topology_path) if self.topology_path else load_topology_yaml()
+            data = copy.deepcopy(self._initial_data)
+
+        G = nx.MultiDiGraph()
 
         for n in data.get("nodes", []):
-            self._graph.add_node(n["id"], label=n["label"], **n.get("properties", {}))
-
-        for e in data.get("edges", []):
-            self._graph.add_edge(
-                e["source"],
-                e["target"],
-                type=e["type"],
-                **e.get("properties", {}),
+            nid = n["id"]
+            props = copy.deepcopy(n.get("properties", {}))
+            props.pop("project_id", None)
+            props.pop("label", None)
+            G.add_node(
+                nid,
+                label=n.get("label", "Service"),
+                project_id=project_id,
+                **props,
             )
 
-    def get_topology(self) -> Topology:
-        """Return the complete active topology."""
+        for e in data.get("edges", []):
+            u = e["source"]
+            v = e["target"]
+            props = copy.deepcopy(e.get("properties", {}))
+            props.pop("project_id", None)
+            props.pop("type", None)
+            G.add_edge(
+                u,
+                v,
+                type=e.get("type", "CALLS"),
+                project_id=project_id,
+                **props,
+            )
+
+        self._graphs[project_id] = G
+
+    def reset(self, project_id: str = "demo") -> None:
+        """Restore project graph to clean baseline topology from data/topology.yaml."""
+        if project_id == "*":
+            self._graphs.clear()
+            self._incidents.clear()
+            self._decisions.clear()
+            self._outcomes.clear()
+            self.seed_project("demo")
+            return
+
+        self._incidents = [i for i in self._incidents if i.project_id != project_id]
+        self._decisions = [d for d in self._decisions if d.get("project_id") != project_id]
+        self._outcomes = [o for o in self._outcomes if o.project_id != project_id]
+
+        self.seed_project(project_id=project_id)
+
+    def get_topology(self, project_id: str = "demo") -> Topology:
+        """Return the complete active topology for the specified project."""
+        G = self._get_project_graph(project_id)
         nodes: list[Node] = []
-        for nid, attrs in self._graph.nodes(data=True):
-            props = dict(attrs)
-            label = props.pop("label", "Service")
-            nodes.append(Node(id=nid, label=label, properties=props))
+        for nid, attrs in G.nodes(data=True):
+            label = attrs.get("label", "Service")
+            props = {k: v for k, v in attrs.items() if k not in ("label", "project_id")}
+            nodes.append(Node(id=nid, label=label, project_id=project_id, properties=props))
 
         edges: list[Edge] = []
-        for u, v, attrs in self._graph.edges(data=True):
-            props = dict(attrs)
-            etype = props.pop("type", "CALLS")
-            edges.append(Edge(source=u, target=v, type=etype, properties=props))
+        for u, v, attrs in G.edges(data=True):
+            etype = attrs.get("type", "CALLS")
+            props = {k: v for k, v in attrs.items() if k not in ("type", "project_id")}
+            edges.append(Edge(source=u, target=v, type=etype, project_id=project_id, properties=props))
 
         return Topology(nodes=nodes, edges=edges)
 
-    def neighbors(self, node: str, hops: int = 1) -> Subgraph:
-        """Return the k-hop neighborhood around node (both in- and out-edges)."""
-        if node not in self._graph:
+    def neighbors(self, node: str, hops: int = 1, project_id: str = "demo") -> Subgraph:
+        """Return the k-hop neighborhood around node (both directions) within project_id."""
+        G = self._get_project_graph(project_id)
+        if node not in G:
             return Subgraph(nodes=[], edges=[])
 
-        # Undirected traversal to find connected node set within k hops
         visited = {node}
         current_layer = {node}
 
         for _ in range(hops):
             next_layer = set()
             for n in current_layer:
-                # Predecessors and successors
-                neighbors_n = set(self._graph.predecessors(n)) | set(self._graph.successors(n))
+                neighbors_n = set(G.predecessors(n)) | set(G.successors(n))
                 for nbr in neighbors_n:
                     if nbr not in visited:
                         visited.add(nbr)
                         next_layer.add(nbr)
             current_layer = next_layer
 
-        # Build subgraph containing visited nodes and all edges between them
         sub_nodes: list[Node] = []
         for nid in visited:
-            attrs = dict(self._graph.nodes[nid])
-            label = attrs.pop("label", "Service")
-            sub_nodes.append(Node(id=nid, label=label, properties=attrs))
+            attrs = dict(G.nodes[nid])
+            label = attrs.get("label", "Service")
+            props = {k: v for k, v in attrs.items() if k not in ("label", "project_id")}
+            sub_nodes.append(Node(id=nid, label=label, project_id=project_id, properties=props))
 
         sub_edges: list[Edge] = []
         for u in visited:
             for v in visited:
-                if self._graph.has_edge(u, v):
-                    edge_dict = self._graph.get_edge_data(u, v)
+                if G.has_edge(u, v):
+                    edge_dict = G.get_edge_data(u, v)
                     for _, attrs in edge_dict.items():
-                        props = dict(attrs)
-                        etype = props.pop("type", "CALLS")
-                        sub_edges.append(Edge(source=u, target=v, type=etype, properties=props))
+                        etype = attrs.get("type", "CALLS")
+                        props = {k: v for k, v in attrs.items() if k not in ("type", "project_id")}
+                        sub_edges.append(Edge(source=u, target=v, type=etype, project_id=project_id, properties=props))
 
         return Subgraph(nodes=sub_nodes, edges=sub_edges)
 
-    def callers(self, node: str, depth: int = 3) -> list[Caller]:
-        """Return upstream callers of node walking BACKWARDS along CALLS edges.
+    def callers(self, node: str, depth: int = 3, project_id: str = "demo") -> list[Caller]:
+        """Return upstream callers of node walking BACKWARDS along CALLS edges in project_id.
 
-        Rule: CALLS is caller -> callee.
-        Therefore, callers of B are predecessors A where edge (A, B) has type 'CALLS'.
+        Rule: CALLS is caller -> callee. Callers are predecessors.
         Depth attenuation: 0.75 per hop (hop 1 = 1.0, hop 2 = 0.75, hop 3 = 0.5625).
         """
-        if node not in self._graph:
+        G = self._get_project_graph(project_id)
+        if node not in G:
             return []
 
-        callers_map: dict[str, int] = {}  # caller_id -> minimum hops
+        callers_map: dict[str, int] = {}
         visited = {node}
         queue: list[tuple[str, int]] = [(node, 0)]
 
@@ -134,10 +180,8 @@ class NetworkXGraphRepository(GraphRepository):
             if curr_hop >= depth:
                 continue
 
-            # Look at predecessors: nodes that have an edge directed into curr
-            for pred in self._graph.predecessors(curr):
-                edge_dict = self._graph.get_edge_data(pred, curr)
-                # Verify at least one edge is a caller/dependency edge (CALLS, DEPENDS_ON, CONNECTS_TO)
+            for pred in G.predecessors(curr):
+                edge_dict = G.get_edge_data(pred, curr)
                 is_call = any(
                     attrs.get("type") in ("CALLS", "DEPENDS_ON", "CONNECTS_TO")
                     for attrs in edge_dict.values()
@@ -157,14 +201,13 @@ class NetworkXGraphRepository(GraphRepository):
 
         return results
 
-    def incidents(self, node: str = "", days: int = 30) -> list[Incident]:
-        """Return incidents associated with node within the last `days` days.
-
-        If node is empty or '*', returns all incidents.
-        """
+    def incidents(self, node: str = "", days: int = 30, project_id: str = "demo") -> list[Incident]:
+        """Return incidents associated with node within last `days` days in project_id."""
         now = datetime.now(timezone.utc)
         matching: list[Incident] = []
         for inc in self._incidents:
+            if inc.project_id != project_id:
+                continue
             if not node or node == "*" or inc.service_id == node:
                 try:
                     inc_time = datetime.fromisoformat(inc.timestamp.replace("Z", "+00:00"))
@@ -172,70 +215,176 @@ class NetworkXGraphRepository(GraphRepository):
                     if diff_days <= days:
                         matching.append(inc)
                 except Exception:
-                    # If timestamp parsing fails, include it
                     matching.append(inc)
         return matching
 
-
-    def set_telemetry(self, node: str, fields: dict[str, Any]) -> None:
-        """Update telemetry/metric properties on a given node."""
-        if node in self._graph:
+    def set_telemetry(self, node: str, fields: dict[str, Any], project_id: str = "demo") -> None:
+        """Update telemetry/metric properties on a given node in project_id."""
+        G = self._get_project_graph(project_id)
+        if node in G:
             for k, v in fields.items():
-                self._graph.nodes[node][k] = v
+                G.nodes[node][k] = v
+            G.nodes[node]["project_id"] = project_id
 
     def add_incident(
         self,
         service_id: str,
         description: str,
         decision_data: Optional[dict[str, Any]] = None,
+        project_id: str = "demo",
     ) -> Incident:
-        """Create an Incident node, Decision node, and link them to the graph."""
+        """Create an Incident node, Decision node, and link them to graph in project_id."""
+        G = self._get_project_graph(project_id)
         now_iso = datetime.now(timezone.utc).isoformat()
-        inc_id = f"inc-{len(self._incidents) + 1:04d}"
-        dec_id = f"dec-{len(self._decisions) + 1:04d}"
+        proj_inc_count = len([i for i in self._incidents if i.project_id == project_id]) + 1
+        proj_dec_count = len([d for d in self._decisions if d.get("project_id") == project_id]) + 1
+
+        inc_id = f"inc-{proj_inc_count:04d}"
+        dec_id = f"dec-{proj_dec_count:04d}"
 
         # 1. Add Incident node
-        self._graph.add_node(
+        G.add_node(
             inc_id,
             label="Incident",
             service_id=service_id,
             description=description,
             timestamp=now_iso,
             status="resolved",
+            project_id=project_id,
         )
 
         # 2. Add Decision node
-        dec_props = decision_data or {
+        raw_dec_props = decision_data or {
             "action": "restart_pod",
             "safety_score": 90,
             "outcome": "success",
         }
-        self._graph.add_node(
+        dec_props = {
+            k: v for k, v in raw_dec_props.items()
+            if k not in ("project_id", "label", "timestamp")
+        }
+        G.add_node(
             dec_id,
             label="Decision",
             timestamp=now_iso,
+            project_id=project_id,
             **dec_props,
         )
 
-        # 3. Add edges:
-        # Incident -[:OCCURRED_IN]-> Service
-        if service_id in self._graph:
-            self._graph.add_edge(inc_id, service_id, type="OCCURRED_IN", timestamp=now_iso)
+        # 3. Add edges within project graph
+        if service_id in G:
+            G.add_edge(inc_id, service_id, type="OCCURRED_IN", timestamp=now_iso, project_id=project_id)
 
-        # Decision -[:RESOLVED_BY]-> Incident
-        self._graph.add_edge(dec_id, inc_id, type="RESOLVED_BY", timestamp=now_iso)
+        G.add_edge(dec_id, inc_id, type="RESOLVED_BY", timestamp=now_iso, project_id=project_id)
 
         incident_obj = Incident(
             id=inc_id,
             service_id=service_id,
             description=description,
             timestamp=now_iso,
+            project_id=project_id,
             resolved=True,
             decision_id=dec_id,
             properties=dec_props,
         )
 
         self._incidents.append(incident_obj)
-        self._decisions.append({"id": dec_id, **dec_props})
+        self._decisions.append({"id": dec_id, "project_id": project_id, **dec_props})
 
         return incident_obj
+
+    def add_outcome(
+        self,
+        decision_id: str,
+        incident_id: str,
+        service_id: str,
+        fault_type: str,
+        action: str,
+        status: str,
+        safety_score: float,
+        composite_score: float,
+        project_id: str = "demo",
+    ) -> Outcome:
+        """Create an Outcome node and Decision-[:RESULTED_IN]->Outcome edge in project_id."""
+        G = self._get_project_graph(project_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        proj_out_count = len([o for o in self._outcomes if o.project_id == project_id]) + 1
+        out_id = f"out-{proj_out_count:04d}"
+
+        G.add_node(
+            out_id,
+            label="Outcome",
+            decision_id=decision_id,
+            incident_id=incident_id,
+            service_id=service_id,
+            fault_type=fault_type,
+            action=action,
+            status=status,
+            safety_score=safety_score,
+            composite_score=composite_score,
+            timestamp=now_iso,
+            project_id=project_id,
+        )
+
+        if decision_id in G:
+            G.add_edge(decision_id, out_id, type="RESULTED_IN", timestamp=now_iso, project_id=project_id)
+
+        if service_id in G:
+            G.add_edge(out_id, service_id, type="OCCURRED_IN", timestamp=now_iso, project_id=project_id)
+
+        outcome = Outcome(
+            id=out_id,
+            decision_id=decision_id,
+            incident_id=incident_id,
+            service_id=service_id,
+            fault_type=fault_type,
+            action=action,
+            status=status,
+            safety_score=safety_score,
+            composite_score=composite_score,
+            timestamp=now_iso,
+            project_id=project_id,
+        )
+        self._outcomes.append(outcome)
+        return outcome
+
+    def get_outcomes(
+        self,
+        fault_type: str = "",
+        action: str = "",
+        days: int = 90,
+        project_id: str = "demo",
+    ) -> list[Outcome]:
+        """Return Outcome objects for project_id within `days` days."""
+        now = datetime.now(timezone.utc)
+        results: list[Outcome] = []
+        for out in self._outcomes:
+            if out.project_id != project_id:
+                continue
+            try:
+                out_time = datetime.fromisoformat(out.timestamp.replace("Z", "+00:00"))
+                diff_days = (now - out_time).total_seconds() / 86400.0
+                if diff_days > days:
+                    continue
+            except Exception:
+                pass
+            if fault_type and out.fault_type != fault_type:
+                continue
+            if action and out.action != action:
+                continue
+            results.append(out)
+        return results
+
+    def get_all_incidents_with_descriptions(self, days: int = 90, project_id: str = "demo") -> list[dict[str, Any]]:
+        """Return all incidents as dicts for similarity search in project_id."""
+        all_inc = self.incidents(node="", days=days, project_id=project_id)
+        return [
+            {
+                "id": inc.id,
+                "service_id": inc.service_id,
+                "description": inc.description,
+                "timestamp": inc.timestamp,
+                "project_id": inc.project_id,
+            }
+            for inc in all_inc
+        ]

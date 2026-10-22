@@ -24,12 +24,14 @@ class CycleCheckResult(BaseModel):
 def detect_cycles(
     repo: GraphRepository,
     proposed_edges: list[dict[str, Any]] | None = None,
+    project_id: str = "demo",
 ) -> CycleCheckResult:
     """Run Tarjan's Strongly Connected Components algorithm on the topology graph
 
     including any new edges introduced by a PR.
     """
-    topo = repo.get_topology()
+    topo = repo.get_topology(project_id=project_id)
+
 
     # Build a DiGraph for SCC analysis
     G = nx.DiGraph()

@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 import json
 from typing import Any, AsyncGenerator
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas import (
@@ -14,6 +14,8 @@ from backend.api.schemas import (
     MemoryCommitResponse,
     SSEEventEnvelope,
 )
+from backend.auth.dependencies import require_api_key
+from backend.auth.store import ProjectRecord
 from backend.config import settings
 from backend.graph import get_repository
 from backend.agent.stream import stream_diagnosis_events
@@ -113,7 +115,7 @@ def get_heal_config():
 
 
 @router.get("/heal/stream")
-async def stream_heal_events(incident_id: str = ""):
+async def stream_heal_events(incident_id: str = "", project_id: str = "demo"):
     """Stream diagnosis and remediation reasoning via Server-Sent Events (SSE)."""
     async def event_generator() -> AsyncGenerator[str, None]:
         if settings.DEMO_MODE:
@@ -123,7 +125,7 @@ async def stream_heal_events(incident_id: str = ""):
                 yield f"data: {envelope.model_dump_json()}\n\n"
                 await asyncio.sleep(0.3)
         else:
-            async for ev in stream_diagnosis_events(incident_id=incident_id):
+            async for ev in stream_diagnosis_events(incident_id=incident_id, project_id=project_id):
                 envelope = SSEEventEnvelope(**ev)
                 yield f"data: {envelope.model_dump_json()}\n\n"
                 await asyncio.sleep(0.1)
@@ -140,19 +142,22 @@ async def stream_heal_events(incident_id: str = ""):
 
 
 @router.get("/heal/events", response_model=list[SSEEventEnvelope])
-async def get_heal_events_polling(incident_id: str = "") -> list[SSEEventEnvelope]:
+async def get_heal_events_polling(incident_id: str = "", project_id: str = "demo") -> list[SSEEventEnvelope]:
     """Polling fallback for diagnosis events if SSE is blocked in the client environment."""
     if settings.DEMO_MODE:
         return [SSEEventEnvelope(**ev) for ev in get_demo_diagnosis_events()]
 
     events: list[SSEEventEnvelope] = []
-    async for ev in stream_diagnosis_events(incident_id=incident_id):
+    async for ev in stream_diagnosis_events(incident_id=incident_id, project_id=project_id):
         events.append(SSEEventEnvelope(**ev))
     return events
 
 
 @router.post("/actuator/execute", response_model=ActuatorExecuteResponse)
-def execute_actuator_action(req: ActuatorExecuteRequest) -> ActuatorExecuteResponse:
+def execute_actuator_action(
+    req: ActuatorExecuteRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> ActuatorExecuteResponse:
     """Execute a guarded allowlisted remediation action.
 
     Safety Rules (.agent/rules/03-actuator-safety.md):
@@ -192,14 +197,14 @@ def execute_actuator_action(req: ActuatorExecuteRequest) -> ActuatorExecuteRespo
             "pool_size": pool_size,
             "status": "healthy",
             "p99_ms": 6.0,
-        })
+        }, project_id=req.project_id)
         # If target service was paymentservice, restore its latency
         repo.set_telemetry("paymentservice", {
             "p99_ms": 38.0,
             "error_rate": 0.001,
             "status": "healthy",
             "active_alert": None,
-        })
+        }, project_id=req.project_id)
 
         return ActuatorExecuteResponse(
             execution_id=execution_id,
@@ -217,7 +222,7 @@ def execute_actuator_action(req: ActuatorExecuteRequest) -> ActuatorExecuteRespo
             "restart_count": 0,
             "cpu_pct": 22.0,
             "p99_ms": 38.0,
-        })
+        }, project_id=req.project_id)
         return ActuatorExecuteResponse(
             execution_id=execution_id,
             action=req.action,
@@ -242,7 +247,10 @@ def execute_actuator_action(req: ActuatorExecuteRequest) -> ActuatorExecuteRespo
 
 
 @router.post("/memory/commit", response_model=MemoryCommitResponse)
-def commit_incident_to_graph(req: MemoryCommitRequest) -> MemoryCommitResponse:
+def commit_incident_to_graph(
+    req: MemoryCommitRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> MemoryCommitResponse:
     """Write completed incident and resolution decision back to the Knowledge Graph (M8).
 
     Crucial feedback loop: writes (:Incident)-[:OCCURRED_IN]->(:Service) and
@@ -258,6 +266,7 @@ def commit_incident_to_graph(req: MemoryCommitRequest) -> MemoryCommitResponse:
             "safety_score": req.safety_score,
             "outcome": req.outcome,
         },
+        project_id=req.project_id,
     )
 
     return MemoryCommitResponse(

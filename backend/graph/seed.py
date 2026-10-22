@@ -21,7 +21,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 TOPOLOGY_FILE = DATA_DIR / "topology.yaml"
 
 
-def generate_topology_data() -> dict[str, Any]:
+def generate_topology_data(project_id: str = "demo") -> dict[str, Any]:
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
 
@@ -41,7 +41,9 @@ def generate_topology_data() -> dict[str, Any]:
         nodes.append({
             "id": sid,
             "label": "Service",
+            "project_id": project_id,
             "properties": {
+                "project_id": project_id,
                 "name": sname,
                 "baseline_p99_ms": p99,
                 "p99_ms": p99,
@@ -65,7 +67,9 @@ def generate_topology_data() -> dict[str, Any]:
         nodes.append({
             "id": did,
             "label": "Database",
+            "project_id": project_id,
             "properties": {
+                "project_id": project_id,
                 "name": dname,
                 "engine": engine,
                 "baseline_p99_ms": p99,
@@ -75,6 +79,7 @@ def generate_topology_data() -> dict[str, Any]:
                 "status": "healthy",
             },
         })
+
 
     # 3. 16 Pods (2 per service) & INSTANCE_OF edges (16 edges)
     for sid, _, p99, _, _ in services_spec:
@@ -291,8 +296,15 @@ def generate_topology_data() -> dict[str, Any]:
             "properties": {"latency_p99": 20.0, "protocol": "in-process/gRPC", "confidence": 0.99},
         })
 
-    # Total: 124 + 18 = 142 edges!
+    # Ensure project_id is explicitly set on every node and edge (and their properties)
+    for n in nodes:
+        n.setdefault("project_id", project_id)
+        n.setdefault("properties", {})["project_id"] = project_id
+    for e in edges:
+        e.setdefault("project_id", project_id)
+        e.setdefault("properties", {})["project_id"] = project_id
 
+    # Total: 124 + 18 = 142 edges!
     return {"nodes": nodes, "edges": edges}
 
 
@@ -318,8 +330,8 @@ def validate_topology(data: dict[str, Any]) -> tuple[bool, str]:
     return True, "Topology validation passed: exactly 54 nodes and 142 edges, all references resolved."
 
 
-def save_topology_yaml(filepath: Path | str = TOPOLOGY_FILE) -> None:
-    data = generate_topology_data()
+def save_topology_yaml(filepath: Path | str = TOPOLOGY_FILE, project_id: str = "demo") -> None:
+    data = generate_topology_data(project_id=project_id)
     valid, msg = validate_topology(data)
     if not valid:
         raise ValueError(f"Topology generation failed: {msg}")
@@ -336,10 +348,22 @@ def load_topology_yaml(filepath: Path | str = TOPOLOGY_FILE) -> dict[str, Any]:
         save_topology_yaml(p)
     with open(p, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
+
+    # Ensure project_id is present on all nodes and edges (default: demo)
+    for n in data.get("nodes", []):
+        proj = n.get("project_id") or n.get("properties", {}).get("project_id", "demo")
+        n["project_id"] = proj
+        n.setdefault("properties", {})["project_id"] = proj
+    for e in data.get("edges", []):
+        proj = e.get("project_id") or e.get("properties", {}).get("project_id", "demo")
+        e["project_id"] = proj
+        e.setdefault("properties", {})["project_id"] = proj
+
     valid, msg = validate_topology(data)
     if not valid:
         raise ValueError(f"Invalid topology file: {msg}")
     return data
+
 
 
 if __name__ == "__main__":

@@ -16,8 +16,11 @@ import asyncio
 from typing import Any, Literal, Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from backend.auth.dependencies import require_api_key
+from backend.auth.store import ProjectRecord
 
 router = APIRouter(prefix="/api", tags=["executor"])
 
@@ -30,6 +33,7 @@ class ExecuteRequest(BaseModel):
     incident_id: str = Field(..., description="Incident that triggered this remediation.")
     service_id: str = Field(..., description="Target service/node ID.")
     action: str = Field(..., description="Proposed allowlisted action.")
+    project_id: str = Field(default="demo", description="Project scope.")
     params: dict[str, Any] = Field(default_factory=dict)
     fault_type: str = Field(default="unknown")
     reason: str = Field(default="")
@@ -41,6 +45,7 @@ class ApproveRequest(BaseModel):
     """Payload for POST /api/actuator/approve."""
 
     decision_id: str
+    project_id: str = Field(default="demo", description="Project scope.")
     baseline_latency_ms: float = Field(default=100.0)
 
 
@@ -51,22 +56,28 @@ class DecisionResponse(BaseModel):
     incident_id: str
     service_id: str
     action: str
+    project_id: str = "demo"
     params: dict[str, Any]
     fault_type: str
     safety_score: float
     recovery_score: float
     composite_score: float
     status: str
+    outcome: Optional[str] = None
     reason: str
     created_at: str
     updated_at: str
     emulated: bool
 
 
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/actuator/execute", response_model=DecisionResponse)
-async def execute_proposal(req: ExecuteRequest) -> DecisionResponse:
+async def execute_proposal(
+    req: ExecuteRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> DecisionResponse:
     """Submit an RCA-proposed fix for execution.
 
     Pipeline: allowlist → scoring → snapshot → (pending | auto-execute).
@@ -83,12 +94,16 @@ async def execute_proposal(req: ExecuteRequest) -> DecisionResponse:
         reason=req.reason,
         reasoning_trace=req.reasoning_trace,
         baseline_latency_ms=req.baseline_latency_ms,
+        project_id=req.project_id or _auth.project_id,
     )
     return DecisionResponse(**dec.model_dump())
 
 
 @router.post("/actuator/approve", response_model=DecisionResponse)
-async def approve_decision(req: ApproveRequest) -> DecisionResponse:
+async def approve_decision(
+    req: ApproveRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> DecisionResponse:
     """Approve and execute a pending Decision.
 
     Only valid when EXECUTION_MODE=approve. Returns 404 if decision_id is not
@@ -109,14 +124,34 @@ async def approve_decision(req: ApproveRequest) -> DecisionResponse:
 
 
 @router.get("/decisions", response_model=list[DecisionResponse])
-def list_decisions() -> list[DecisionResponse]:
-    """Return all Decision records from the in-memory audit registry."""
+def list_decisions(project_id: str = "demo") -> list[DecisionResponse]:
+    """Return all Decision records for project_id from the in-memory audit registry."""
     from backend.executor.audit import get_all_decisions
 
-    records = get_all_decisions()
+    records = get_all_decisions(project_id=project_id)
     return [DecisionResponse(**r) for r in records if _is_valid_decision(r)]
 
 
 def _is_valid_decision(r: dict[str, Any]) -> bool:
     """Filter out update-only records (they have '_update: True')."""
     return not r.get("_update", False)
+
+
+@router.get("/outcomes")
+def list_outcomes(fault_type: str = "", action: str = "", days: int = 90, project_id: str = "demo") -> list[dict[str, Any]]:
+    """Return all Outcome nodes from the graph repository for project_id."""
+    from backend.graph import get_repository
+
+    repo = get_repository()
+    outcomes = repo.get_outcomes(fault_type=fault_type, action=action, days=days, project_id=project_id)
+    return [o.model_dump() for o in outcomes]
+
+
+@router.get("/feedback/success-rates")
+def get_success_rates(fault_type: str = "pool_exhaustion", action: str = "scale_pool", project_id: str = "demo") -> dict[str, Any]:
+    """Return empirical recovery success rates derived from past graph Outcomes for project_id."""
+    from backend.feedback.writer import compute_success_rate_table
+
+    return compute_success_rate_table(fault_type=fault_type, action=action, project_id=project_id)
+
+

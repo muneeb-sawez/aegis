@@ -21,6 +21,9 @@ from backend.api.routes_heal import router as heal_router
 from backend.api.routes_ingestion import router as ingestion_router
 from backend.api.routes_monitor import router as monitor_router
 from backend.api.routes_predict import router as predict_router
+from backend.api.routes_projects import router as projects_router
+from backend.api.routes_endpoints import router as endpoints_router
+from backend.api.routes_webhooks import router as webhooks_router
 from backend.api.routes_sim import router as sim_router
 
 from contextlib import asynccontextmanager
@@ -64,6 +67,9 @@ app.include_router(actuator_router)   # Executor: /api/actuator/execute, /approv
 app.include_router(ingestion_router)
 app.include_router(monitor_router)
 app.include_router(predict_router)
+app.include_router(projects_router)
+app.include_router(endpoints_router)
+app.include_router(webhooks_router)
 
 
 from fastapi import FastAPI, Request

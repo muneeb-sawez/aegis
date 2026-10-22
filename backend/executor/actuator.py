@@ -101,6 +101,20 @@ def _call_target_emulated(
         params,
         signature,
     )
+
+    # Restore node telemetry to healthy in graph repository (emulated fix outcome)
+    try:
+        from backend.graph import get_repository
+        repo = get_repository()
+        repo.set_telemetry(service_id, {"status": "healthy", "p99_ms": 45.0, "error_rate": 0.0, "connections": 10})
+        if "postgres" in service_id or "pod" in service_id:
+            svc_name = service_id.replace("postgres-", "").replace("-pod-1", "")
+            if svc_name == "payment":
+                svc_name = "paymentservice"
+            repo.set_telemetry(svc_name, {"status": "healthy", "p99_ms": 45.0, "error_rate": 0.0})
+    except Exception:
+        pass
+
     # Simulate a successful execution response
     return {
         "status": "applied",

@@ -13,6 +13,7 @@ import {
   Clock,
   Sparkles,
   Radio,
+  KeyRound,
 } from 'lucide-react';
 
 // Multi-Page Views
@@ -24,6 +25,8 @@ import { ActuatorPage } from './pages/ActuatorPage';
 import { ObservabilityPage } from './pages/ObservabilityPage';
 import { IngestPage } from './pages/IngestPage';
 import { IncidentLedgerPage } from './pages/IncidentLedgerPage';
+import { ProjectsPage } from './pages/ProjectsPage';
+import { getActiveProjectId, getAuthHeaders, apiUrl } from './config';
 
 type PageId =
   | 'topology'
@@ -33,7 +36,8 @@ type PageId =
   | 'actuator'
   | 'observability'
   | 'ingest'
-  | 'incidents';
+  | 'incidents'
+  | 'projects';
 
 interface NavItem {
   id: PageId;
@@ -61,17 +65,28 @@ export function App() {
       'observability',
       'ingest',
       'incidents',
+      'projects',
     ];
     return validPages.includes(hash) ? hash : 'topology';
   };
 
   const [activePage, setActivePage] = useState<PageId>(getInitialPage);
+  const [activeProjectId, setActiveProjectIdState] = useState<string>(getActiveProjectId);
   const [selectedServiceContext, setSelectedServiceContext] = useState<string>('paymentservice');
   const [nodeCount, setNodeCount] = useState<number>(54);
   const [edgeCount, setEdgeCount] = useState<number>(142);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [resetNotification, setResetNotification] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>(new Date().toISOString().substring(11, 19) + ' UTC');
+
+  useEffect(() => {
+    const onProjectChange = (e: any) => {
+      const newPid = e.detail?.projectId || getActiveProjectId();
+      setActiveProjectIdState(newPid);
+    };
+    window.addEventListener('aegis_project_changed', onProjectChange);
+    return () => window.removeEventListener('aegis_project_changed', onProjectChange);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -94,7 +109,7 @@ export function App() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const resp = await fetch('/api/graph/topology');
+        const resp = await fetch(apiUrl(`/api/graph/topology?project_id=${activeProjectId}`));
         if (resp.ok) {
           const data = await resp.json();
           if (data.nodes) setNodeCount(data.nodes.length);
@@ -105,7 +120,7 @@ export function App() {
       }
     };
     fetchCounts();
-  }, [activePage]);
+  }, [activePage, activeProjectId]);
 
   const handleNavigate = (page: string, serviceId?: string) => {
     if (serviceId) {
@@ -119,12 +134,19 @@ export function App() {
     setIsResetting(true);
     setResetNotification(null);
     try {
-      const resp = await fetch('/api/reset', { method: 'POST' });
+      const resp = await fetch(apiUrl(`/api/reset?project_id=${activeProjectId}`), {
+        method: 'POST',
+        headers: getAuthHeaders(activeProjectId),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setNodeCount(data.node_count || 54);
         setEdgeCount(data.edge_count || 142);
-        setResetNotification('Demo baseline restored (54 nodes, 142 edges).');
+        setResetNotification(`Baseline restored for '${activeProjectId}'.`);
+        setTimeout(() => setResetNotification(null), 4000);
+      } else {
+        const err = await resp.json().catch(() => ({}));
+        setResetNotification(err.detail || 'Reset failed (401 Unauthorized)');
         setTimeout(() => setResetNotification(null), 4000);
       }
     } catch (e) {
@@ -204,6 +226,19 @@ export function App() {
           label: 'Incident Memory Ledger',
           icon: GitCommit,
           desc: 'Closed-loop feedback (+5.0 learning)',
+        },
+      ],
+    },
+    {
+      group: 'SECURITY & WORKSPACES',
+      items: [
+        {
+          id: 'projects',
+          label: 'Projects & API Keys',
+          icon: KeyRound,
+          desc: 'Per-project keys (hashed) & tenants',
+          highlight: '#38bdf8',
+          badge: 'AUTH',
         },
       ],
     },
@@ -303,6 +338,27 @@ export function App() {
             <Radio size={12} />
             <span>OPERATIONAL</span>
           </div>
+
+          <button
+            onClick={() => handleNavigate('projects')}
+            title="Click to view all projects or create a new project tenant"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 20,
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              fontSize: 11,
+              color: '#38bdf8',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <KeyRound size={12} />
+            <span>Tenant: {activeProjectId}</span>
+          </button>
         </div>
 
         {/* Right: Live Clock & Reset Baseline Action */}
@@ -473,6 +529,7 @@ export function App() {
           {activePage === 'observability' && <ObservabilityPage onNavigate={handleNavigate} />}
           {activePage === 'ingest' && <IngestPage onNavigate={handleNavigate} />}
           {activePage === 'incidents' && <IncidentLedgerPage onNavigate={handleNavigate} />}
+          {activePage === 'projects' && <ProjectsPage onNavigate={handleNavigate} />}
         </main>
       </div>
     </div>

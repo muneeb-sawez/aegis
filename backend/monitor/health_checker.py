@@ -80,6 +80,7 @@ class FaultSimulationRequest(BaseModel):
     fault_type: Literal["timeout", "elevated_latency", "consecutive_failure", "clear"]
     consecutive_failures: int = 2
     latency_ms: float = 3500.0
+    project_id: str = "demo"
 
 
 class EventBroadcaster:
@@ -501,33 +502,8 @@ class HealthChecker:
 
     def _validate_url(self, url: str):
         """Validate URL to prevent SSRF and unsafe requests."""
-        if not url or not isinstance(url, str):
-            raise ValueError("Endpoint URL cannot be empty.")
-
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError(f"Invalid URL scheme '{parsed.scheme}'. Only HTTP and HTTPS are permitted.")
-
-        host = (parsed.hostname or "").lower()
-        if not host:
-            raise ValueError("URL must include a valid hostname or IP address.")
-
-        if host in BLOCKED_HOSTS:
-            raise ValueError(f"Target host '{host}' is blocked for security purposes.")
-
-        try:
-            ip = ipaddress.ip_address(host)
-            if ip.is_link_local:
-                raise ValueError(f"Link-local IP address '{host}' is blocked.")
-        except ValueError as e:
-            if "blocked" in str(e):
-                raise
-
-        if parsed.username or parsed.password:
-            raise ValueError("User credentials are not allowed in endpoint URLs.")
-
-        if parsed.port is not None and not (1 <= parsed.port <= 65535):
-            raise ValueError(f"Port {parsed.port} is outside valid range (1-65535).")
+        from backend.security.ssrf import validate_url_ssrf
+        validate_url_ssrf(url)
 
     async def start_worker(self, interval_sec: Optional[float] = None):
         """Start continuous background monitoring worker on configurable interval."""
@@ -592,7 +568,7 @@ class HealthChecker:
 
             try:
                 repo = get_repository()
-                repo.set_telemetry(req.service_id, {"status": "healthy", "p99_ms": 35.0, "error_rate": 0.0})
+                repo.set_telemetry(req.service_id, {"status": "healthy", "p99_ms": 35.0, "error_rate": 0.0}, project_id=req.project_id)
             except Exception:
                 pass
 
@@ -660,9 +636,10 @@ class HealthChecker:
                         "failures": record.consecutive_failures,
                         "data_source": "simulated",
                     },
+                    project_id=req.project_id,
                 )
                 record.active_incident_id = inc.id
-                repo.set_telemetry(req.service_id, {"status": "unavailable", "alert": record.error_message})
+                repo.set_telemetry(req.service_id, {"status": "unavailable", "alert": record.error_message}, project_id=req.project_id)
             except Exception:
                 pass
 

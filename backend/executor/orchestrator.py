@@ -76,6 +76,7 @@ async def run_remediation(
     reason: str,
     reasoning_trace: list[str],
     baseline_latency_ms: float = 100.0,
+    project_id: str = "demo",
     *,
     override_mode: str | None = None,
 ) -> DecisionRecord:
@@ -92,6 +93,7 @@ async def run_remediation(
         reason: Short rationale from RCA agent.
         reasoning_trace: Full chain of thought from RCA (for audit).
         baseline_latency_ms: Pre-incident latency baseline for health check.
+        project_id: Project identifier (defaults to "demo").
         override_mode: If set, overrides EXECUTION_MODE env var (tests only).
 
     Returns:
@@ -113,6 +115,7 @@ async def run_remediation(
             incident_id=incident_id,
             service_id=service_id,
             action=action,
+            project_id=project_id,
             params=params,
             fault_type=fault_type,
             safety_score=0.0,
@@ -127,12 +130,13 @@ async def run_remediation(
         return refused_record
 
     # ── GATE 4 & 5: Safety scoring ────────────────────────────────────────────
-    scoring = compute_score(action=proposal.action, fault_type=proposal.fault_type)
+    scoring = compute_score(action=proposal.action, fault_type=proposal.fault_type, project_id=project_id)
     if not scoring.eligible:
         refused_record = DecisionRecord(
             incident_id=incident_id,
             service_id=service_id,
             action=action,
+            project_id=project_id,
             params=params,
             fault_type=fault_type,
             safety_score=scoring.safety_score,
@@ -152,6 +156,7 @@ async def run_remediation(
         incident_id=incident_id,
         service_id=service_id,
         action=proposal.action,
+        project_id=project_id,
         params=proposal.params,
         fault_type=proposal.fault_type,
         safety_score=scoring.safety_score,

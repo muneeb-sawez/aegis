@@ -25,6 +25,7 @@ class PRPayload(BaseModel):
     id: str
     title: str
     target_service: str
+    project_id: str = "demo"
     author: str = "engineer@example.com"
     description: str = ""
     old_schema: dict[str, Any] | None = None
@@ -43,6 +44,7 @@ class RiskBreakdown(BaseModel):
 class RiskAssessmentResult(BaseModel):
     pr_id: str
     target_service: str
+    project_id: str = "demo"
     risk_score: float = Field(ge=0.0, le=100.0)
     verdict: str  # Approved, Warn, Blocked
     breakdown: RiskBreakdown
@@ -58,30 +60,36 @@ def assess_change_risk(
     pr: PRPayload,
     repo: GraphRepository,
     config: RiskConfig = DEFAULT_CONFIG,
+    project_id: str = "demo",
 ) -> RiskAssessmentResult:
     """Compute the multi-factor change-risk score and merge gate verdict."""
+    eff_project_id = project_id if project_id != "demo" else (pr.project_id or "demo")
+
     # 1. Term B: Blast Radius
     b_score, callers, caller_details = calculate_blast_radius(
         pr.target_service,
         repo,
         config=config,
+        project_id=eff_project_id,
     )
+
 
     # 2. Term C: Breaking Contract Severity
     contract_res = diff_schemas(pr.old_schema, pr.new_schema)
     c_score = contract_res.score
 
     # 3. Term D: Cycle Penalty
-    cycle_res = detect_cycles(repo, pr.proposed_edges)
+    cycle_res = detect_cycles(repo, pr.proposed_edges, project_id=eff_project_id)
     d_score = cycle_res.score
 
     # 4. Term H: Historical Incidents (past 30 days)
-    incidents = repo.incidents(pr.target_service, days=30)
+    incidents = repo.incidents(pr.target_service, days=30, project_id=eff_project_id)
     inc_count = len(incidents)
     h_score = min(
         config.history_max_score,
         round(inc_count * config.history_penalty_per_incident, 2),
     )
+
 
     # 5. Composite Risk Score
     composite_raw = (
@@ -141,6 +149,7 @@ def assess_change_risk(
     return RiskAssessmentResult(
         pr_id=pr.id,
         target_service=pr.target_service,
+        project_id=eff_project_id,
         risk_score=risk_score,
         verdict=verdict,
         breakdown=RiskBreakdown(

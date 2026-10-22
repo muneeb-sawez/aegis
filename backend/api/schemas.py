@@ -24,6 +24,7 @@ class SimulatePRRequest(BaseModel):
     pr_id: Optional[str] = None
     title: Optional[str] = "Proposed Pull Request"
     target_service: str
+    project_id: str = "demo"
     author: Optional[str] = "developer@company.com"
     description: Optional[str] = ""
     old_schema: Optional[dict[str, Any]] = None
@@ -34,6 +35,7 @@ class SimulatePRRequest(BaseModel):
 class SimulatePRResponse(BaseModel):
     pr_id: str
     target_service: str
+    project_id: str = "demo"
     risk_score: float
     verdict: Literal["Approved", "Warn", "Blocked"]
     breakdown: RiskBreakdown
@@ -49,6 +51,7 @@ class SimulatePRResponse(BaseModel):
 class InjectFaultRequest(BaseModel):
     fault_id: str  # pool_exhaustion, pod_crash, cpu_saturation, latency_spike
     target_service: Optional[str] = "paymentservice"
+    project_id: str = "demo"
     intensity: Optional[float] = 1.0
 
 
@@ -72,6 +75,7 @@ class SSEEventEnvelope(BaseModel):
 class ActuatorExecuteRequest(BaseModel):
     action: Literal["restart_pod", "scale_pool", "rollback_release"]
     target: str
+    project_id: str = "demo"
     params: dict[str, Any] = Field(default_factory=dict)
     rationale: str = ""
 
@@ -93,6 +97,7 @@ class MemoryCommitRequest(BaseModel):
     action_taken: str
     outcome: str = "success"
     safety_score: float = 90.0
+    project_id: str = "demo"
 
 
 class MemoryCommitResponse(BaseModel):
@@ -101,6 +106,7 @@ class MemoryCommitResponse(BaseModel):
     service_id: str
     status: str
     message: str
+    project_id: str = "demo"
 
 
 # 7. Reset
@@ -109,3 +115,5 @@ class ResetResponse(BaseModel):
     message: str
     node_count: int
     edge_count: int
+    project_id: str = "demo"
+

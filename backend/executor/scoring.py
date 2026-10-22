@@ -56,11 +56,12 @@ class ScoringResult:
     composite_score: float     # 0..100
     eligible: bool             # False if Safety < safety_threshold
     refusal_reason: str        # Non-empty only when eligible=False
+    recovery_source: str = "static_table"  # 'empirical (n=X)' or 'static_table (…)'
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def compute_score(action: str, fault_type: str) -> ScoringResult:
+def compute_score(action: str, fault_type: str, project_id: str = "demo") -> ScoringResult:
     """Compute safety, recovery, and composite scores for a proposed fix.
 
     SAFETY GATE (second): Returns ScoringResult.eligible=False and a
@@ -70,6 +71,7 @@ def compute_score(action: str, fault_type: str) -> ScoringResult:
     Args:
         action: Allowlisted action string (already validated by allowlist.py).
         fault_type: Fault type from RCAResult for recovery score lookup.
+        project_id: Project identifier for empirical outcome lookups (default: 'demo').
 
     Returns:
         ScoringResult with all fields populated.
@@ -116,10 +118,30 @@ def compute_score(action: str, fault_type: str) -> ScoringResult:
         logger.warning("SCORING_REFUSED %s", refusal_reason)
 
     # ── Recovery score lookup ─────────────────────────────────────────────────
-    # Fallback to 'unknown' if fault_type not in table.
-    recovery_score: float = float(
-        _RECOVERY_TABLE.get(fault_type, _RECOVERY_TABLE.get("unknown", 50.0))
-    )
+    # DYNAMIC PATH: Use empirical success-rate table when >= 3 outcomes exist.
+    # FALLBACK PATH: Use static config table when < 3 samples (not yet reliable).
+    recovery_score: float
+    recovery_source: str
+
+    try:
+        from backend.feedback.writer import compute_success_rate_table
+        rate_info = compute_success_rate_table(fault_type=fault_type, action=action, project_id=project_id)
+        if rate_info["reliable"]:
+            # Convert success rate [0..1] → score [0..100]
+            recovery_score = round(rate_info["rate"] * 100.0, 1)
+            recovery_source = f"empirical (n={rate_info['sample_count']})"
+        else:
+            # Fewer than 3 samples — fall back to static config table
+            recovery_score = float(
+                _RECOVERY_TABLE.get(fault_type, _RECOVERY_TABLE.get("unknown", 50.0))
+            )
+            recovery_source = f"static_table (only {rate_info['sample_count']} samples)"
+    except Exception as exc:
+        logger.warning("SCORING_RECOVERY_FALLBACK error=%s", exc)
+        recovery_score = float(
+            _RECOVERY_TABLE.get(fault_type, _RECOVERY_TABLE.get("unknown", 50.0))
+        )
+        recovery_source = "static_table (error)"
 
     composite_score: float = SAFETY_WEIGHT * safety_score + RECOVERY_WEIGHT * recovery_score
 
@@ -134,6 +156,7 @@ def compute_score(action: str, fault_type: str) -> ScoringResult:
         composite_score=composite_score,
         eligible=eligible,
         refusal_reason=refusal_reason,
+        recovery_source=recovery_source,
     )
 
     logger.info(

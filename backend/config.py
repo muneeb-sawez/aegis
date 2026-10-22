@@ -47,8 +47,12 @@ class Settings(BaseSettings):
         description="HMAC secret for signing actuator requests. Override in production via env.",
     )
 
-    # Ingestion Settings
+    # Ingestion & Webhooks Settings
     GITHUB_TOKEN: Optional[str] = Field(default=None, description="GitHub Personal Access Token for ingestion")
+    GITHUB_WEBHOOK_SECRET: str = Field(
+        default="test-webhook-secret",
+        description="Shared secret for verifying GitHub X-Hub-Signature-256 HMAC",
+    )
 
 
     # Health Monitoring & Anomaly Detection Rules

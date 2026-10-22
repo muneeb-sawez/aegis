@@ -1,7 +1,9 @@
 nodes:
 - id: frontend
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Frontend Web Gateway
     baseline_p99_ms: 35.0
     p99_ms: 35.0
@@ -10,7 +12,9 @@ nodes:
     tier: presentation
 - id: checkoutservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Checkout Service
     baseline_p99_ms: 45.0
     p99_ms: 45.0
@@ -19,7 +23,9 @@ nodes:
     tier: core
 - id: orderservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Order Processing Service
     baseline_p99_ms: 50.0
     p99_ms: 50.0
@@ -28,7 +34,9 @@ nodes:
     tier: core
 - id: paymentservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Payment Gateway Service
     baseline_p99_ms: 38.0
     p99_ms: 38.0
@@ -37,7 +45,9 @@ nodes:
     tier: critical
 - id: emailservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Email Notification Service
     baseline_p99_ms: 25.0
     p99_ms: 25.0
@@ -46,7 +56,9 @@ nodes:
     tier: utility
 - id: shippingservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Shipping & Fulfillment Service
     baseline_p99_ms: 40.0
     p99_ms: 40.0
@@ -55,7 +67,9 @@ nodes:
     tier: core
 - id: cartservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Shopping Cart Service
     baseline_p99_ms: 20.0
     p99_ms: 20.0
@@ -64,7 +78,9 @@ nodes:
     tier: core
 - id: recommendationservice
   label: Service
+  project_id: demo
   properties:
+    project_id: demo
     name: Product Recommendation Service
     baseline_p99_ms: 30.0
     p99_ms: 30.0
@@ -73,7 +89,9 @@ nodes:
     tier: support
 - id: postgres-payment
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: PostgreSQL Payment DB
     engine: postgresql
     baseline_p99_ms: 5.0
@@ -83,7 +101,9 @@ nodes:
     status: healthy
 - id: postgres-order
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: PostgreSQL Orders DB
     engine: postgresql
     baseline_p99_ms: 6.0
@@ -93,7 +113,9 @@ nodes:
     status: healthy
 - id: redis-cart
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: Redis Cart Cache
     engine: redis
     baseline_p99_ms: 1.5
@@ -103,7 +125,9 @@ nodes:
     status: healthy
 - id: redis-cache
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: Redis Product Cache
     engine: redis
     baseline_p99_ms: 1.2
@@ -113,7 +137,9 @@ nodes:
     status: healthy
 - id: mongodb-shipping
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: MongoDB Shipping DB
     engine: mongodb
     baseline_p99_ms: 8.0
@@ -123,7 +149,9 @@ nodes:
     status: healthy
 - id: kafka-cluster
   label: Database
+  project_id: demo
   properties:
+    project_id: demo
     name: Kafka Event Bus (Demo Node)
     engine: kafka
     baseline_p99_ms: 10.0
@@ -141,6 +169,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 35.0
     p99_ms: 35.0
+    project_id: demo
+  project_id: demo
 - id: frontend-pod-2
   label: Pod
   properties:
@@ -151,6 +181,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 35.0
     p99_ms: 35.0
+    project_id: demo
+  project_id: demo
 - id: checkoutservice-pod-1
   label: Pod
   properties:
@@ -161,6 +193,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 45.0
     p99_ms: 45.0
+    project_id: demo
+  project_id: demo
 - id: checkoutservice-pod-2
   label: Pod
   properties:
@@ -171,6 +205,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 45.0
     p99_ms: 45.0
+    project_id: demo
+  project_id: demo
 - id: orderservice-pod-1
   label: Pod
   properties:
@@ -181,6 +217,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 50.0
     p99_ms: 50.0
+    project_id: demo
+  project_id: demo
 - id: orderservice-pod-2
   label: Pod
   properties:
@@ -191,6 +229,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 50.0
     p99_ms: 50.0
+    project_id: demo
+  project_id: demo
 - id: paymentservice-pod-1
   label: Pod
   properties:
@@ -201,6 +241,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 38.0
     p99_ms: 38.0
+    project_id: demo
+  project_id: demo
 - id: paymentservice-pod-2
   label: Pod
   properties:
@@ -211,6 +253,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 38.0
     p99_ms: 38.0
+    project_id: demo
+  project_id: demo
 - id: emailservice-pod-1
   label: Pod
   properties:
@@ -221,6 +265,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 25.0
     p99_ms: 25.0
+    project_id: demo
+  project_id: demo
 - id: emailservice-pod-2
   label: Pod
   properties:
@@ -231,6 +277,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 25.0
     p99_ms: 25.0
+    project_id: demo
+  project_id: demo
 - id: shippingservice-pod-1
   label: Pod
   properties:
@@ -241,6 +289,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 40.0
     p99_ms: 40.0
+    project_id: demo
+  project_id: demo
 - id: shippingservice-pod-2
   label: Pod
   properties:
@@ -251,6 +301,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 40.0
     p99_ms: 40.0
+    project_id: demo
+  project_id: demo
 - id: cartservice-pod-1
   label: Pod
   properties:
@@ -261,6 +313,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 20.0
     p99_ms: 20.0
+    project_id: demo
+  project_id: demo
 - id: cartservice-pod-2
   label: Pod
   properties:
@@ -271,6 +325,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 20.0
     p99_ms: 20.0
+    project_id: demo
+  project_id: demo
 - id: recommendationservice-pod-1
   label: Pod
   properties:
@@ -281,6 +337,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 30.0
     p99_ms: 30.0
+    project_id: demo
+  project_id: demo
 - id: recommendationservice-pod-2
   label: Pod
   properties:
@@ -291,6 +349,8 @@ nodes:
     memory_mb: 256.0
     baseline_p99_ms: 30.0
     p99_ms: 30.0
+    project_id: demo
+  project_id: demo
 - id: frontend:get_index
   label: APIEndpoint
   properties:
@@ -299,6 +359,8 @@ nodes:
     path: /api/v1/get-index
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: frontend:post_login
   label: APIEndpoint
   properties:
@@ -307,6 +369,8 @@ nodes:
     path: /api/v1/post-login
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: frontend:get_cart_view
   label: APIEndpoint
   properties:
@@ -315,6 +379,8 @@ nodes:
     path: /api/v1/get-cart-view
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: checkoutservice:place_order
   label: APIEndpoint
   properties:
@@ -323,6 +389,8 @@ nodes:
     path: /api/v1/place-order
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: checkoutservice:get_checkout_status
   label: APIEndpoint
   properties:
@@ -331,6 +399,8 @@ nodes:
     path: /api/v1/get-checkout-status
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: checkoutservice:cancel_checkout
   label: APIEndpoint
   properties:
@@ -339,6 +409,8 @@ nodes:
     path: /api/v1/cancel-checkout
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: orderservice:create_order
   label: APIEndpoint
   properties:
@@ -347,6 +419,8 @@ nodes:
     path: /api/v1/create-order
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: orderservice:get_order
   label: APIEndpoint
   properties:
@@ -355,6 +429,8 @@ nodes:
     path: /api/v1/get-order
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: orderservice:list_orders
   label: APIEndpoint
   properties:
@@ -363,6 +439,8 @@ nodes:
     path: /api/v1/list-orders
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: paymentservice:charge_card
   label: APIEndpoint
   properties:
@@ -371,6 +449,8 @@ nodes:
     path: /api/v1/charge-card
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: paymentservice:refund_card
   label: APIEndpoint
   properties:
@@ -379,6 +459,8 @@ nodes:
     path: /api/v1/refund-card
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: paymentservice:verify_token
   label: APIEndpoint
   properties:
@@ -387,6 +469,8 @@ nodes:
     path: /api/v1/verify-token
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: emailservice:send_order_confirmation
   label: APIEndpoint
   properties:
@@ -395,6 +479,8 @@ nodes:
     path: /api/v1/send-order-confirmation
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: emailservice:send_shipping_update
   label: APIEndpoint
   properties:
@@ -403,6 +489,8 @@ nodes:
     path: /api/v1/send-shipping-update
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: emailservice:send_alert
   label: APIEndpoint
   properties:
@@ -411,6 +499,8 @@ nodes:
     path: /api/v1/send-alert
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: shippingservice:ship_order
   label: APIEndpoint
   properties:
@@ -419,6 +509,8 @@ nodes:
     path: /api/v1/ship-order
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: shippingservice:track_package
   label: APIEndpoint
   properties:
@@ -427,6 +519,8 @@ nodes:
     path: /api/v1/track-package
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: shippingservice:calculate_rates
   label: APIEndpoint
   properties:
@@ -435,6 +529,8 @@ nodes:
     path: /api/v1/calculate-rates
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: cartservice:get_items
   label: APIEndpoint
   properties:
@@ -443,6 +539,8 @@ nodes:
     path: /api/v1/get-items
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: cartservice:add_item
   label: APIEndpoint
   properties:
@@ -451,6 +549,8 @@ nodes:
     path: /api/v1/add-item
     method: POST
     status: active
+    project_id: demo
+  project_id: demo
 - id: cartservice:empty_cart
   label: APIEndpoint
   properties:
@@ -459,6 +559,8 @@ nodes:
     path: /api/v1/empty-cart
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: recommendationservice:get_recommendations
   label: APIEndpoint
   properties:
@@ -467,6 +569,8 @@ nodes:
     path: /api/v1/get-recommendations
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: recommendationservice:track_impression
   label: APIEndpoint
   properties:
@@ -475,6 +579,8 @@ nodes:
     path: /api/v1/track-impression
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 - id: recommendationservice:get_trending
   label: APIEndpoint
   properties:
@@ -483,351 +589,481 @@ nodes:
     path: /api/v1/get-trending
     method: GET
     status: active
+    project_id: demo
+  project_id: demo
 edges:
 - source: frontend-pod-1
   target: frontend
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-2
   target: frontend
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: checkoutservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: checkoutservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: orderservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: orderservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: paymentservice-pod-1
   target: paymentservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: paymentservice-pod-2
   target: paymentservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: emailservice-pod-1
   target: emailservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: emailservice-pod-2
   target: emailservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: shippingservice-pod-1
   target: shippingservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: shippingservice-pod-2
   target: shippingservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-1
   target: cartservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-2
   target: cartservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: recommendationservice-pod-1
   target: recommendationservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: recommendationservice-pod-2
   target: recommendationservice
   type: INSTANCE_OF
   properties:
     weight: 1.0
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: frontend:get_index
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: frontend:post_login
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: frontend:get_cart_view
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: checkoutservice:place_order
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: checkoutservice:get_checkout_status
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: checkoutservice:cancel_checkout
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: orderservice:create_order
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: orderservice:get_order
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: orderservice:list_orders
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: paymentservice
   target: paymentservice:charge_card
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: paymentservice
   target: paymentservice:refund_card
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: paymentservice
   target: paymentservice:verify_token
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: emailservice
   target: emailservice:send_order_confirmation
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: emailservice
   target: emailservice:send_shipping_update
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: emailservice
   target: emailservice:send_alert
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: shippingservice
   target: shippingservice:ship_order
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: shippingservice
   target: shippingservice:track_package
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: shippingservice
   target: shippingservice:calculate_rates
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: cartservice:get_items
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: cartservice:add_item
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: cartservice:empty_cart
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: recommendationservice
   target: recommendationservice:get_recommendations
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: recommendationservice
   target: recommendationservice:track_impression
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: recommendationservice
   target: recommendationservice:get_trending
   type: EXPOSES
   properties:
     protocol: HTTP/2
+    project_id: demo
+  project_id: demo
 - source: paymentservice
   target: postgres-payment
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: postgres-order
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: redis-cart
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: recommendationservice
   target: redis-cache
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: shippingservice
   target: mongodb-shipping
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: emailservice
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     pool_limit: 100
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: paymentservice-pod-1
   target: postgres-payment
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: paymentservice-pod-2
   target: postgres-payment
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: postgres-order
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: postgres-order
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-1
   target: redis-cart
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-2
   target: redis-cart
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: recommendationservice-pod-1
   target: redis-cache
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: recommendationservice-pod-2
   target: redis-cache
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: shippingservice-pod-1
   target: mongodb-shipping
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: shippingservice-pod-2
   target: mongodb-shipping
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: emailservice-pod-1
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: emailservice-pod-2
   target: kafka-cluster
   type: DEPENDS_ON
   properties:
     conns_active: 5
     confidence: 1.0
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: checkoutservice
   type: CALLS
@@ -835,6 +1071,8 @@ edges:
     latency_p99: 45.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: cartservice
   type: CALLS
@@ -842,6 +1080,8 @@ edges:
     latency_p99: 20.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: recommendationservice
   type: CALLS
@@ -849,6 +1089,8 @@ edges:
     latency_p99: 30.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: orderservice
   type: CALLS
@@ -856,6 +1098,8 @@ edges:
     latency_p99: 50.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: paymentservice
   type: CALLS
@@ -863,6 +1107,8 @@ edges:
     latency_p99: 38.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: shippingservice
   type: CALLS
@@ -870,6 +1116,8 @@ edges:
     latency_p99: 40.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: emailservice
   type: CALLS
@@ -877,6 +1125,8 @@ edges:
     latency_p99: 25.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: cartservice
   type: CALLS
@@ -884,6 +1134,8 @@ edges:
     latency_p99: 20.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: paymentservice
   type: CALLS
@@ -891,6 +1143,8 @@ edges:
     latency_p99: 38.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: shippingservice
   type: CALLS
@@ -898,6 +1152,8 @@ edges:
     latency_p99: 40.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: emailservice
   type: CALLS
@@ -905,6 +1161,8 @@ edges:
     latency_p99: 25.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: recommendationservice
   type: CALLS
@@ -912,6 +1170,8 @@ edges:
     latency_p99: 30.0
     protocol: gRPC
     confidence: 0.98
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-1
   target: checkoutservice
   type: CALLS
@@ -919,6 +1179,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-2
   target: checkoutservice
   type: CALLS
@@ -926,6 +1188,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-1
   target: cartservice
   type: CALLS
@@ -933,6 +1197,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-2
   target: cartservice
   type: CALLS
@@ -940,6 +1206,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-1
   target: recommendationservice
   type: CALLS
@@ -947,6 +1215,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-2
   target: recommendationservice
   type: CALLS
@@ -954,6 +1224,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: orderservice
   type: CALLS
@@ -961,6 +1233,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: orderservice
   type: CALLS
@@ -968,6 +1242,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: paymentservice
   type: CALLS
@@ -975,6 +1251,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: paymentservice
   type: CALLS
@@ -982,6 +1260,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: shippingservice
   type: CALLS
@@ -989,6 +1269,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: shippingservice
   type: CALLS
@@ -996,6 +1278,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-1
   target: emailservice
   type: CALLS
@@ -1003,6 +1287,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: checkoutservice-pod-2
   target: emailservice
   type: CALLS
@@ -1010,6 +1296,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: paymentservice
   type: CALLS
@@ -1017,6 +1305,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: paymentservice
   type: CALLS
@@ -1024,6 +1314,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: shippingservice
   type: CALLS
@@ -1031,6 +1323,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: shippingservice
   type: CALLS
@@ -1038,6 +1332,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-1
   target: emailservice
   type: CALLS
@@ -1045,6 +1341,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: orderservice-pod-2
   target: emailservice
   type: CALLS
@@ -1052,6 +1350,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-1
   target: recommendationservice
   type: CALLS
@@ -1059,6 +1359,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: cartservice-pod-2
   target: recommendationservice
   type: CALLS
@@ -1066,6 +1368,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-1
   target: orderservice
   type: CALLS
@@ -1073,6 +1377,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend-pod-2
   target: orderservice
   type: CALLS
@@ -1080,6 +1386,8 @@ edges:
     latency_p99: 35.0
     protocol: gRPC
     confidence: 0.95
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: checkoutservice:place_order
   type: CALLS
@@ -1087,6 +1395,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: checkoutservice:get_checkout_status
   type: CALLS
@@ -1094,6 +1404,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: cartservice:get_items
   type: CALLS
@@ -1101,6 +1413,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: cartservice:add_item
   type: CALLS
@@ -1108,6 +1422,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: recommendationservice:get_recommendations
   type: CALLS
@@ -1115,6 +1431,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: recommendationservice:get_trending
   type: CALLS
@@ -1122,6 +1440,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: orderservice:create_order
   type: CALLS
@@ -1129,6 +1449,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: orderservice:get_order
   type: CALLS
@@ -1136,6 +1458,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: paymentservice:charge_card
   type: CALLS
@@ -1143,6 +1467,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: paymentservice:verify_token
   type: CALLS
@@ -1150,6 +1476,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: shippingservice:ship_order
   type: CALLS
@@ -1157,6 +1485,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: shippingservice:calculate_rates
   type: CALLS
@@ -1164,6 +1494,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: emailservice:send_order_confirmation
   type: CALLS
@@ -1171,6 +1503,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice
   target: cartservice:empty_cart
   type: CALLS
@@ -1178,6 +1512,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: paymentservice:charge_card
   type: CALLS
@@ -1185,6 +1521,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: paymentservice:refund_card
   type: CALLS
@@ -1192,6 +1530,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: shippingservice:ship_order
   type: CALLS
@@ -1199,6 +1539,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: shippingservice:track_package
   type: CALLS
@@ -1206,6 +1548,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: emailservice:send_order_confirmation
   type: CALLS
@@ -1213,6 +1557,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: orderservice
   target: emailservice:send_shipping_update
   type: CALLS
@@ -1220,6 +1566,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: cartservice
   target: recommendationservice:get_recommendations
   type: CALLS
@@ -1227,6 +1575,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: orderservice:list_orders
   type: CALLS
@@ -1234,6 +1584,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: frontend
   target: shippingservice:track_package
   type: CALLS
@@ -1241,6 +1593,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: emailservice
   target: orderservice:get_order
   type: CALLS
@@ -1248,6 +1602,8 @@ edges:
     latency_p99: 35.0
     protocol: HTTP/2
     confidence: 0.96
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:place_order
   target: orderservice:create_order
   type: CALLS
@@ -1255,6 +1611,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:place_order
   target: paymentservice:charge_card
   type: CALLS
@@ -1262,6 +1620,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:place_order
   target: shippingservice:ship_order
   type: CALLS
@@ -1269,6 +1629,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:place_order
   target: emailservice:send_order_confirmation
   type: CALLS
@@ -1276,6 +1638,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:place_order
   target: cartservice:empty_cart
   type: CALLS
@@ -1283,6 +1647,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: orderservice:create_order
   target: paymentservice:charge_card
   type: CALLS
@@ -1290,6 +1656,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: orderservice:create_order
   target: shippingservice:ship_order
   type: CALLS
@@ -1297,6 +1665,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: orderservice:create_order
   target: emailservice:send_order_confirmation
   type: CALLS
@@ -1304,6 +1674,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: orderservice:get_order
   target: shippingservice:track_package
   type: CALLS
@@ -1311,6 +1683,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: frontend:get_cart_view
   target: cartservice:get_items
   type: CALLS
@@ -1318,6 +1692,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: frontend:get_cart_view
   target: recommendationservice:get_recommendations
   type: CALLS
@@ -1325,6 +1701,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: frontend:post_login
   target: cartservice:get_items
   type: CALLS
@@ -1332,6 +1710,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: frontend:get_index
   target: recommendationservice:get_trending
   type: CALLS
@@ -1339,6 +1719,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: shippingservice:ship_order
   target: emailservice:send_shipping_update
   type: CALLS
@@ -1346,6 +1728,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: paymentservice:charge_card
   target: paymentservice:verify_token
   type: CALLS
@@ -1353,6 +1737,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:cancel_checkout
   target: paymentservice:refund_card
   type: CALLS
@@ -1360,6 +1746,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: checkoutservice:cancel_checkout
   target: emailservice:send_alert
   type: CALLS
@@ -1367,6 +1755,8 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
 - source: orderservice:list_orders
   target: orderservice:get_order
   type: CALLS
@@ -1374,3 +1764,5 @@ edges:
     latency_p99: 20.0
     protocol: in-process/gRPC
     confidence: 0.99
+    project_id: demo
+  project_id: demo
