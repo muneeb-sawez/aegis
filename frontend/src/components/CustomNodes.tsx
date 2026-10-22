@@ -158,9 +158,9 @@ export const CriticalNode = memo(({ data }: { data: NodeData }) => {
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2 }}>{data.label}</div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>
             {data.sublabel || 'Service'}
-            {data.latency_ms !== undefined && (
+            {data.latency_ms !== undefined && data.latency_ms !== null && (
               <span style={{ marginLeft: 6, color: theme.dotColor, fontWeight: 600 }}>
-                {data.latency_ms.toFixed(0)}ms
+                {Number(data.latency_ms).toFixed(0)}ms
               </span>
             )}
           </div>
@@ -268,9 +268,9 @@ export const ServiceNode = memo(({ data }: { data: NodeData }) => {
         <div style={{ fontSize: 12, fontWeight: 600 }}>{data.label}</div>
         <div style={{ fontSize: 10, color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
           <span>{data.sublabel || 'Service'}</span>
-          {data.latency_ms !== undefined && (
+          {data.latency_ms !== undefined && data.latency_ms !== null && (
             <span style={{ color: theme.dotColor, fontWeight: 700 }}>
-              {data.latency_ms.toFixed(0)}ms
+              {Number(data.latency_ms).toFixed(0)}ms
             </span>
           )}
         </div>

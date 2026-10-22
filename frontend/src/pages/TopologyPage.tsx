@@ -752,7 +752,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
                         fontWeight: 600,
                       }}
                     >
-                      {selectedNode.error_rate !== undefined
+                      {selectedNode.error_rate !== undefined && selectedNode.error_rate !== null
                         ? `${(selectedNode.error_rate * 100).toFixed(1)}%`
                         : '0.0%'}
                     </span>
