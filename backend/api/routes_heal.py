@@ -20,14 +20,14 @@ router = APIRouter(prefix="/api", tags=["healing"])
 
 
 def get_demo_diagnosis_events() -> list[dict[str, Any]]:
-    """Generate realistic diagnosis workflow events adhering to the contract envelope."""
+    """Generate scripted demo diagnosis workflow events (Demo diagnosis (scripted))."""
     now = datetime.now(timezone.utc).isoformat()
     return [
         {
             "type": "thought",
             "ts": now,
             "payload": {
-                "message": "Anomaly detected: paymentservice p99 latency elevated (3400ms > 3x baseline 38ms) across 3 consecutive ticks. Initiating graph-grounded investigation.",
+                "message": "[Demo diagnosis (scripted)] Anomaly detected: paymentservice p99 latency elevated (3400ms > 3x baseline 38ms) across 3 consecutive ticks. Initiating graph-grounded investigation.",
             },
         },
         {

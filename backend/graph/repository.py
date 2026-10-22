@@ -72,9 +72,13 @@ class GraphRepository(ABC):
         pass
 
     @abstractmethod
-    def incidents(self, node: str, days: int = 30) -> list[Incident]:
-        """Return historical incidents associated with node within the last `days` days."""
+    def incidents(self, node: str = "", days: int = 30) -> list[Incident]:
+        """Return historical incidents associated with node within the last `days` days.
+
+        If node is empty, returns all incidents within the last `days` days.
+        """
         pass
+
 
     @abstractmethod
     def set_telemetry(self, node: str, fields: dict[str, Any]) -> None:

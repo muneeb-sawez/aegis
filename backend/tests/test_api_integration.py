@@ -141,3 +141,43 @@ def test_api_closed_loop_lifecycle():
         json={"pr_id": "PR-142", "target_service": "paymentservice"},
     )
     assert sim_reset_resp.json()["risk_score"] == pre_score
+
+
+def test_api_incidents_empty_and_after_add():
+    """Verify GET /api/incidents on empty baseline and after adding an incident."""
+    client.post("/api/reset")
+    resp_empty = client.get("/api/incidents")
+    assert resp_empty.status_code == 200
+    assert resp_empty.json() == []
+
+    # Add an incident via memory/commit
+    commit_resp = client.post(
+        "/api/memory/commit",
+        json={
+            "service_id": "paymentservice",
+            "incident_description": "DB connection pool exhausted",
+            "action_taken": "scale_pool",
+            "outcome": "success",
+            "safety_score": 92.0,
+        },
+    )
+    assert commit_resp.status_code == 200
+
+    resp_after = client.get("/api/incidents")
+    assert resp_after.status_code == 200
+    incidents = resp_after.json()
+    assert len(incidents) == 1
+    assert incidents[0]["service_id"] == "paymentservice"
+    assert "DB connection pool exhausted" in incidents[0]["description"]
+
+    # Filter by service_id
+    resp_filtered = client.get("/api/incidents?service_id=paymentservice")
+    assert resp_filtered.status_code == 200
+    assert len(resp_filtered.json()) == 1
+
+    resp_other = client.get("/api/incidents?service_id=checkoutservice")
+    assert resp_other.status_code == 200
+    assert len(resp_other.json()) == 0
+
+    client.post("/api/reset")
+

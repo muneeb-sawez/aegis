@@ -12,6 +12,8 @@ import re
 from typing import Optional
 import httpx
 
+from backend.config import settings
+
 CANDIDATE_COMPOSE_FILES = [
     "docker-compose.yml",
     "docker-compose.yaml",
@@ -43,7 +45,7 @@ async def fetch_file_content_from_github(
     token: Optional[str] = None,
 ) -> Optional[str]:
     """Fetch raw or base64 file content from GitHub REST API."""
-    api_token = token or os.getenv("GITHUB_TOKEN")
+    api_token = token or settings.GITHUB_TOKEN
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "AEGIS-Ingestion-Agent/1.0",

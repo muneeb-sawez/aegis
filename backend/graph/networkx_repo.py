@@ -157,13 +157,15 @@ class NetworkXGraphRepository(GraphRepository):
 
         return results
 
-    def incidents(self, node: str, days: int = 30) -> list[Incident]:
-        """Return incidents associated with node within the last `days` days."""
-        # Check direct service match or incidents linking to node
+    def incidents(self, node: str = "", days: int = 30) -> list[Incident]:
+        """Return incidents associated with node within the last `days` days.
+
+        If node is empty or '*', returns all incidents.
+        """
         now = datetime.now(timezone.utc)
         matching: list[Incident] = []
         for inc in self._incidents:
-            if inc.service_id == node:
+            if not node or node == "*" or inc.service_id == node:
                 try:
                     inc_time = datetime.fromisoformat(inc.timestamp.replace("Z", "+00:00"))
                     diff_days = (now - inc_time).total_seconds() / 86400.0
@@ -173,6 +175,7 @@ class NetworkXGraphRepository(GraphRepository):
                     # If timestamp parsing fails, include it
                     matching.append(inc)
         return matching
+
 
     def set_telemetry(self, node: str, fields: dict[str, Any]) -> None:
         """Update telemetry/metric properties on a given node."""

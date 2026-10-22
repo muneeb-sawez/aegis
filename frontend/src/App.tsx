@@ -176,7 +176,7 @@ export function App() {
           id: 'actuator',
           label: 'Self-Healing Actuator',
           icon: Zap,
-          desc: 'LLM graph reasoner & guarded rollback',
+          desc: 'Diagnosis reasoner & guarded rollback',
           highlight: '#818cf8',
           badge: 'PHASE 2',
         },
@@ -457,8 +457,8 @@ export function App() {
               <span style={{ color: '#38bdf8', fontWeight: 700 }}>● Neo4j / NetworkX</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Reasoner LLM</span>
-              <span style={{ color: '#c084fc', fontWeight: 700 }}>● LiteLLM Free Tier</span>
+              <span>Diagnosis Engine</span>
+              <span style={{ color: '#c084fc', fontWeight: 700 }}>● Scripted Demo</span>
             </div>
           </div>
         </aside>

@@ -168,8 +168,28 @@ export const ObservabilityPage: React.FC<ObservabilityPageProps> = ({ onNavigate
         </div>
       </div>
 
+      {/* Notice Banner */}
+      <div
+        style={{
+          padding: '12px 18px',
+          borderRadius: 8,
+          backgroundColor: 'rgba(234, 179, 8, 0.1)',
+          border: '1px solid rgba(234, 179, 8, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          color: '#facc15',
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        <span style={{ fontSize: 14 }}>ℹ</span>
+        <span>Sample data: live OpenTelemetry ingest is planned</span>
+      </div>
+
       {/* Main Grid: Trace Selector & Gantt Waterfall */}
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 24 }}>
+
         {/* Left: Trace List */}
         <div style={{ backgroundColor: '#0c1322', borderRadius: 12, border: '1px solid #1e293b', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>

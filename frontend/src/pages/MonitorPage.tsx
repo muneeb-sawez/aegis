@@ -14,13 +14,15 @@ import {
   Search,
 } from 'lucide-react';
 
+import { DEFAULT_PROBE_URL } from '../config';
+
 export const MonitorPage: React.FC = () => {
   const [healthRecords, setHealthRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedService, setSelectedService] = useState('paymentservice');
   const [faultType, setFaultType] = useState('timeout');
   const [configService, setConfigService] = useState('frontend');
-  const [configUrl, setConfigUrl] = useState('http://127.0.0.1:8000/health');
+  const [configUrl, setConfigUrl] = useState(DEFAULT_PROBE_URL);
   const [configError, setConfigError] = useState<string | null>(null);
   const [configSuccess, setConfigSuccess] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -373,7 +375,7 @@ export const MonitorPage: React.FC = () => {
               type="text"
               value={configUrl}
               onChange={(e) => setConfigUrl(e.target.value)}
-              placeholder="http://127.0.0.1:8000/health"
+              placeholder={DEFAULT_PROBE_URL}
               style={{
                 padding: '7px 12px',
                 borderRadius: 6,

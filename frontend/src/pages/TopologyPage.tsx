@@ -25,6 +25,7 @@ import {
   VpcGroupNode,
   IamRoleNode,
 } from '../components/CustomNodes';
+import { LatencySparkline } from '../components/LatencySparkline';
 
 const nodeTypes = {
   criticalNode: CriticalNode,
@@ -42,11 +43,13 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [rawNodes, setRawNodes] = useState<any[]>([]);
   const [rawEdges, setRawEdges] = useState<any[]>([]);
-  const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [filterLayer, setFilterLayer] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [streamMode, setStreamMode] = useState<'sse' | 'polling' | 'connecting'>('connecting');
+  const [lastEventTime, setLastEventTime] = useState<string | null>(null);
 
   const loadTopology = useCallback(async () => {
     setIsLoading(true);
@@ -58,6 +61,20 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         const topoEdges = data.edges || [];
         setRawNodes(topoNodes);
         setRawEdges(topoEdges);
+
+        // Fetch current health state snapshot
+        let healthMap = new Map<string, any>();
+        try {
+          const hResp = await fetch('/api/monitor/status');
+          if (hResp.ok) {
+            const hList = await hResp.json();
+            for (const h of hList) {
+              healthMap.set(h.service_id, h);
+            }
+          }
+        } catch {
+          // ignore monitor status fetch error on boot
+        }
 
         const knownMap: Record<string, { x: number; y: number; type?: string }> = {
           'internet': { x: 440, y: 30, type: 'serviceNode' },
@@ -103,6 +120,8 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           const badge = isCritical ? 'CRITICAL' : isExternal ? 'EXTERNAL' : isDb ? 'DATABASE' : undefined;
           const iconType = isDb ? 'db' : (isExternal || n.id.includes('gateway')) ? 'gateway' : 'service';
 
+          const healthRec = healthMap.get(n.id);
+
           return {
             id: n.id,
             type: nodeType,
@@ -115,6 +134,13 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
               status: isCritical ? 'critical' : 'normal',
               badge,
               subnets: isExternal ? ['Public Internet / SaaS'] : ['Private Subnet 10.0.1.0/24', 'Public Subnet 10.0.2.0/24'],
+              healthStatus: healthRec ? healthRec.status : (isCritical ? 'healthy' : undefined),
+              latency_ms: healthRec?.response_time_ms,
+              baseline_latency_ms: healthRec?.baseline_latency_ms,
+              rolling_latencies: healthRec?.rolling_latencies || [],
+              error_rate: healthRec?.error_rate,
+              consecutive_failures: healthRec?.consecutive_failures,
+              alertBadge: healthRec?.status === 'unavailable' || healthRec?.status === 'unhealthy',
             },
           };
         });
@@ -151,10 +177,134 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
     loadTopology();
   }, [loadTopology]);
 
+  // Live SSE connection with automatic 3s polling fallback
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let isMounted = true;
+
+    const updateNodeHealth = (serviceId: string, payload: any) => {
+      setLastEventTime(new Date().toLocaleTimeString());
+      setNodes((prevNodes) =>
+        prevNodes.map((n) => {
+          if (n.id === serviceId) {
+            const currentData = n.data || {};
+            const prevRolling = (currentData.rolling_latencies as number[]) || [];
+            let updatedRolling = payload.rolling_latencies;
+            if (!updatedRolling) {
+              if (payload.latency_ms !== undefined && payload.latency_ms !== null) {
+                updatedRolling = [...prevRolling.slice(-19), payload.latency_ms];
+              } else {
+                updatedRolling = prevRolling;
+              }
+            }
+
+            return {
+              ...n,
+              data: {
+                ...currentData,
+                healthStatus: payload.status ?? currentData.healthStatus,
+                latency_ms: payload.latency_ms !== undefined ? payload.latency_ms : currentData.latency_ms,
+                baseline_latency_ms: payload.baseline_latency_ms !== undefined ? payload.baseline_latency_ms : currentData.baseline_latency_ms,
+                rolling_latencies: updatedRolling,
+                error_rate: payload.error_rate !== undefined ? payload.error_rate : currentData.error_rate,
+                consecutive_failures: payload.consecutive_failures !== undefined ? payload.consecutive_failures : currentData.consecutive_failures,
+                alertBadge: payload.status === 'unavailable' || payload.status === 'unhealthy',
+              },
+            };
+          }
+          return n;
+        })
+      );
+    };
+
+    const startPolling = () => {
+      if (pollInterval || !isMounted) return;
+      setStreamMode('polling');
+      const poll = async () => {
+        try {
+          const res = await fetch('/api/monitor/status');
+          if (res.ok && isMounted) {
+            const list = await res.json();
+            for (const item of list) {
+              updateNodeHealth(item.service_id, {
+                status: item.status,
+                latency_ms: item.response_time_ms,
+                baseline_latency_ms: item.baseline_latency_ms,
+                rolling_latencies: item.rolling_latencies,
+                error_rate: item.error_rate,
+                consecutive_failures: item.consecutive_failures,
+              });
+            }
+          }
+        } catch (err) {
+          console.warn('[Monitor] Polling error:', err);
+        }
+      };
+      poll();
+      pollInterval = setInterval(poll, 3000);
+    };
+
+    const connectSSE = () => {
+      try {
+        eventSource = new EventSource('/api/monitor/events');
+
+        eventSource.onopen = () => {
+          if (isMounted) {
+            setStreamMode('sse');
+            if (pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
+          }
+        };
+
+        eventSource.onmessage = (e) => {
+          if (!isMounted) return;
+          try {
+            const evt = JSON.parse(e.data);
+            if (evt && evt.payload && evt.payload.service_id) {
+              updateNodeHealth(evt.payload.service_id, evt.payload);
+            }
+          } catch {
+            // Ignore keep-alive or malformed frames
+          }
+        };
+
+        eventSource.onerror = (err) => {
+          console.warn('[Monitor] SSE connection error, switching to polling:', err);
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (isMounted) {
+            startPolling();
+          }
+        };
+      } catch (err) {
+        console.warn('[Monitor] Could not initialize EventSource:', err);
+        if (isMounted) {
+          startPolling();
+        }
+      }
+    };
+
+    connectSSE();
+
+    return () => {
+      isMounted = false;
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [setNodes]);
+
   // Handle node selection
   const handleNodeClick = (_: any, node: Node) => {
-    const raw = rawNodes.find((n) => n.id === node.id);
-    setSelectedNode(raw || node.data);
+    setSelectedNodeId(node.id);
   };
 
   const handleResetBaseline = async () => {
@@ -174,11 +324,32 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
     }
   };
 
+  // Derive active selected node with live telemetry
+  const activeFlowNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
+  const activeRawNode = selectedNodeId ? rawNodes.find((n) => n.id === selectedNodeId) : null;
+  const selectedNode = activeFlowNode
+    ? {
+        id: activeFlowNode.id,
+        type: activeFlowNode.type,
+        data: activeFlowNode.data,
+        raw: activeRawNode,
+        label: (activeFlowNode.data?.label as string) || activeRawNode?.label || 'Microservice',
+        properties: activeRawNode?.properties || {},
+        healthStatus: (activeFlowNode.data?.healthStatus as string) || 'healthy',
+        latency_ms: activeFlowNode.data?.latency_ms as number | undefined,
+        baseline_latency_ms: activeFlowNode.data?.baseline_latency_ms as number | undefined,
+        rolling_latencies: (activeFlowNode.data?.rolling_latencies as number[]) || [],
+        error_rate: activeFlowNode.data?.error_rate as number | undefined,
+        consecutive_failures: activeFlowNode.data?.consecutive_failures as number | undefined,
+      }
+    : null;
+
   // Filtered nodes based on search and layer
   const filteredNodes = nodes.filter((n) => {
-    const matchesSearch = n.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      n.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (n.data?.label && String(n.data.label).toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     if (!matchesSearch) return false;
 
     if (filterLayer === 'all') return true;
@@ -253,19 +424,87 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
               </button>
             ))}
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748b' }}>
-            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
-            <span>{rawNodes.length} Nodes</span>
-            <span>•</span>
-            <span>{rawEdges.length} Graph Edges</span>
-          </div>
         </div>
 
-        {/* Right: Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Right: Live Monitor Status & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Live Telemetry Stream Indicator */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 20,
+              backgroundColor:
+                streamMode === 'sse'
+                  ? 'rgba(16, 185, 129, 0.12)'
+                  : streamMode === 'polling'
+                  ? 'rgba(245, 158, 11, 0.12)'
+                  : 'rgba(100, 116, 139, 0.12)',
+              border: `1px solid ${
+                streamMode === 'sse'
+                  ? '#10b981'
+                  : streamMode === 'polling'
+                  ? '#f59e0b'
+                  : '#334155'
+              }`,
+              fontSize: 11,
+              fontWeight: 600,
+              color:
+                streamMode === 'sse'
+                  ? '#10b981'
+                  : streamMode === 'polling'
+                  ? '#f59e0b'
+                  : '#94a3b8',
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                backgroundColor:
+                  streamMode === 'sse'
+                    ? '#10b981'
+                    : streamMode === 'polling'
+                    ? '#f59e0b'
+                    : '#94a3b8',
+                boxShadow:
+                  streamMode === 'sse'
+                    ? '0 0 8px #10b981'
+                    : streamMode === 'polling'
+                    ? '0 0 8px #f59e0b'
+                    : 'none',
+              }}
+            />
+            <span>
+              {streamMode === 'sse'
+                ? 'SSE Live Stream'
+                : streamMode === 'polling'
+                ? 'Polling (3s fallback)'
+                : 'Connecting...'}
+            </span>
+            {lastEventTime && (
+              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 2 }}>({lastEventTime})</span>
+            )}
+          </div>
+
           {resetMessage && (
-            <div style={{ fontSize: 11, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                borderRadius: 6,
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: '#10b981',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
               <CheckCircle size={12} />
               <span>{resetMessage}</span>
             </div>
@@ -320,19 +559,25 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         <ReactFlow
           nodes={filteredNodes}
           edges={edges}
-          nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
+          nodeTypes={nodeTypes}
           fitView
+          fitViewOptions={{ padding: 0.18 }}
           minZoom={0.2}
-          maxZoom={1.8}
+          maxZoom={2}
+          defaultEdgeOptions={{ type: 'smoothstep' }}
         >
           <Background color="#1e293b" gap={20} size={1} />
           <Controls style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }} />
           <MiniMap
             style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
             nodeColor={(n) => {
+              const hs = n.data?.healthStatus as string | undefined;
+              if (hs === 'unavailable' || hs === 'unhealthy') return '#ef4444';
+              if (hs === 'degraded') return '#f59e0b';
+              if (hs === 'healthy') return '#10b981';
               if (n.type === 'criticalNode') return '#f97316';
               if (n.type === 'vpcGroupNode') return '#06b6d4';
               if (n.type === 'iamRoleNode') return '#8b5cf6';
@@ -378,12 +623,28 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
                     width: 32,
                     height: 32,
                     borderRadius: 8,
-                    backgroundColor: 'rgba(6, 182, 212, 0.15)',
-                    border: '1px solid rgba(6, 182, 212, 0.4)',
+                    backgroundColor:
+                      selectedNode.healthStatus === 'unavailable' || selectedNode.healthStatus === 'unhealthy'
+                        ? 'rgba(239, 68, 68, 0.2)'
+                        : selectedNode.healthStatus === 'degraded'
+                        ? 'rgba(245, 158, 11, 0.2)'
+                        : 'rgba(6, 182, 212, 0.15)',
+                    border: `1px solid ${
+                      selectedNode.healthStatus === 'unavailable' || selectedNode.healthStatus === 'unhealthy'
+                        ? '#ef4444'
+                        : selectedNode.healthStatus === 'degraded'
+                        ? '#f59e0b'
+                        : 'rgba(6, 182, 212, 0.4)'
+                    }`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#06b6d4',
+                    color:
+                      selectedNode.healthStatus === 'unavailable' || selectedNode.healthStatus === 'unhealthy'
+                        ? '#ef4444'
+                        : selectedNode.healthStatus === 'degraded'
+                        ? '#f59e0b'
+                        : '#06b6d4',
                   }}
                 >
                   <Server size={16} />
@@ -395,7 +656,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
               </div>
 
               <button
-                onClick={() => setSelectedNode(null)}
+                onClick={() => setSelectedNodeId(null)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -411,7 +672,35 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
 
             {/* Drawer Body */}
             <div style={{ padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Properties Card */}
+              {/* Live Telemetry Sparkline */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#94a3b8',
+                    textTransform: 'uppercase',
+                    marginBottom: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>Live Latency Sparkline</span>
+                  <span style={{ fontSize: 10, color: '#64748b', textTransform: 'none' }}>
+                    simulated / emulator time
+                  </span>
+                </div>
+                <LatencySparkline
+                  latencies={selectedNode.rolling_latencies}
+                  baseline={selectedNode.baseline_latency_ms}
+                  status={selectedNode.healthStatus}
+                  width={342}
+                  height={65}
+                />
+              </div>
+
+              {/* Node Metadata & Telemetry */}
               <div style={{ backgroundColor: '#070b14', padding: 12, borderRadius: 8, border: '1px solid #1e293b' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>
                   Node Metadata & Telemetry
@@ -422,19 +711,64 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
                     <span style={{ color: '#f8fafc', fontWeight: 600 }}>{selectedNode.label || 'Service'}</span>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>Tier:</span>{' '}
-                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>Core Microservice</span>
+                    <span style={{ color: '#64748b' }}>Health Status:</span>{' '}
+                    <span
+                      style={{
+                        color:
+                          selectedNode.healthStatus === 'healthy'
+                            ? '#10b981'
+                            : selectedNode.healthStatus === 'degraded'
+                            ? '#f59e0b'
+                            : selectedNode.healthStatus === 'unavailable' || selectedNode.healthStatus === 'unhealthy'
+                            ? '#ef4444'
+                            : '#94a3b8',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {selectedNode.healthStatus.toUpperCase()}
+                    </span>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b' }}>p99 Latency:</span>{' '}
+                    <span style={{ color: '#64748b' }}>Current Latency:</span>{' '}
+                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>
+                      {selectedNode.latency_ms !== undefined && selectedNode.latency_ms !== null
+                        ? `${selectedNode.latency_ms.toFixed(1)}ms`
+                        : 'pending'}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Baseline Latency:</span>{' '}
                     <span style={{ color: '#10b981', fontWeight: 600 }}>
-                      {selectedNode.properties?.p99_ms ? `${selectedNode.properties.p99_ms}ms` : '38ms (baseline)'}
+                      {selectedNode.baseline_latency_ms !== undefined && selectedNode.baseline_latency_ms !== null
+                        ? `${selectedNode.baseline_latency_ms.toFixed(1)}ms`
+                        : 'calibrating'}
                     </span>
                   </div>
                   <div>
                     <span style={{ color: '#64748b' }}>Error Rate:</span>{' '}
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>
-                      {selectedNode.properties?.error_rate !== undefined ? `${(selectedNode.properties.error_rate * 100).toFixed(1)}%` : '0.01%'}
+                    <span
+                      style={{
+                        color: selectedNode.error_rate && selectedNode.error_rate > 0 ? '#ef4444' : '#10b981',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {selectedNode.error_rate !== undefined
+                        ? `${(selectedNode.error_rate * 100).toFixed(1)}%`
+                        : '0.0%'}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Consecutive Fails:</span>{' '}
+                    <span
+                      style={{
+                        color:
+                          selectedNode.consecutive_failures && selectedNode.consecutive_failures > 0
+                            ? '#ef4444'
+                            : '#94a3b8',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {selectedNode.consecutive_failures ?? 0}
                     </span>
                   </div>
                 </div>

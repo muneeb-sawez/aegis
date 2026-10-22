@@ -2,7 +2,8 @@
 
 <div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
 [![React Flow](https://img.shields.io/badge/@xyflow/react-12-FF0072.svg?logo=react&logoColor=white)](https://reactflow.dev/)
@@ -125,8 +126,9 @@ Where:
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Python 3.11+**
+- **Python 3.12**
 - **Node.js 18+ & npm**
+
 - Git
 
 ### 1. Clone & Set Up Backend

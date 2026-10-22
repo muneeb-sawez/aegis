@@ -67,9 +67,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.config import settings
+from backend.graph import get_graph_mode
+
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "AEGIS", "version": "0.2.0"}
+    return {
+        "status": "healthy",
+        "service": "AEGIS",
+        "version": "0.2.0",
+        "mode": get_graph_mode(),
+    }
 
 
 dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
@@ -98,5 +106,5 @@ def read_root(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("backend.api.main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("backend.api.main:app", host=settings.HOST, port=settings.PORT, reload=True)
+

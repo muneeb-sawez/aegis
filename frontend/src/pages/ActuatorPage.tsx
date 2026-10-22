@@ -144,7 +144,7 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
               Phase 2 Autonomous Actuator & Self-Healing Control Center
             </div>
             <div style={{ fontSize: 12, color: '#64748b' }}>
-              Graph-grounded LLM reasoner, allowlisted actuator guardrails, dead-man rollback, and closed-loop memory
+              Graph-grounded diagnosis engine, allowlisted actuator guardrails, dead-man rollback, and closed-loop memory
             </div>
           </div>
         </div>
@@ -217,7 +217,20 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Terminal size={14} color="#818cf8" />
               <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
-                Graph Reasoner LLM SSE Stream
+                Graph Diagnosis Terminal
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                  color: '#facc15',
+                  border: '1px solid rgba(234, 179, 8, 0.35)',
+                }}
+              >
+                Demo diagnosis (scripted)
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
