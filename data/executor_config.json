@@ -1,0 +1,65 @@
+{
+  "_comment": "AEGIS Executor configuration — single source of truth for all scoring tables and tunable parameters. All weights, thresholds, and lookup tables live here. No magic numbers elsewhere.",
+
+  "allowlist": {
+    "_comment": "The 3 allowlisted actions. Any other action string must be refused.",
+    "actions": ["restart", "scale_pool", "rollback"],
+    "scale_pool_min": 1,
+    "scale_pool_max": 100
+  },
+
+  "safety_risk_table": {
+    "_comment": "Per-action risk breakdowns. blast_risk=how far the blast radius extends, data_loss_risk=chance of permanent data loss, overhead_risk=operational overhead. All in [0..25] each; sum max=75 → Safety min=25.",
+    "restart": {
+      "blast_risk": 10,
+      "data_loss_risk": 0,
+      "overhead_risk": 5
+    },
+    "scale_pool": {
+      "blast_risk": 5,
+      "data_loss_risk": 0,
+      "overhead_risk": 3
+    },
+    "rollback": {
+      "blast_risk": 20,
+      "data_loss_risk": 5,
+      "overhead_risk": 10
+    }
+  },
+
+  "recovery_table": {
+    "_comment": "Per-fault-type recovery probability 0..100. Used as Recovery score in composite.",
+    "pool_exhaustion": 90,
+    "pod_crash": 80,
+    "latency_spike": 70,
+    "cpu_saturation": 65,
+    "deadlock": 60,
+    "unknown": 50
+  },
+
+  "scoring": {
+    "safety_weight": 0.6,
+    "recovery_weight": 0.4,
+    "safety_threshold": 75.0,
+    "_comment": "Score = safety_weight*Safety + recovery_weight*Recovery. Refuse if Safety < safety_threshold."
+  },
+
+  "health": {
+    "latency_multiplier": 2.0,
+    "verification_window_sec": 10.0,
+    "probe_interval_sec": 2.0,
+    "_comment": "Healthy = latency < 2x baseline AND no active failures within verification_window_sec."
+  },
+
+  "actuator": {
+    "target_base_url_env": "ACTUATOR_TARGET_BASE_URL",
+    "hmac_secret_env": "ACTUATOR_HMAC_SECRET",
+    "request_timeout_sec": 5.0,
+    "_comment": "Real URL and HMAC secret come from env vars. Never hard-coded."
+  },
+
+  "audit": {
+    "log_path": "backend/logs/audit.jsonl",
+    "_comment": "Append-only JSONL file. Never log secrets."
+  }
+}

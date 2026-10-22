@@ -14,7 +14,9 @@ from backend.api.schemas import (
     MemoryCommitResponse,
     SSEEventEnvelope,
 )
+from backend.config import settings
 from backend.graph import get_repository
+from backend.agent.stream import stream_diagnosis_events
 
 router = APIRouter(prefix="/api", tags=["healing"])
 
@@ -104,15 +106,27 @@ def get_demo_diagnosis_events() -> list[dict[str, Any]]:
     ]
 
 
+@router.get("/heal/config")
+def get_heal_config():
+    """Return runtime healing configuration and active mode."""
+    return {"demo_mode": settings.DEMO_MODE, "provider": settings.LLM_PROVIDER, "model": settings.LLM_MODEL}
+
+
 @router.get("/heal/stream")
-async def stream_heal_events():
+async def stream_heal_events(incident_id: str = ""):
     """Stream diagnosis and remediation reasoning via Server-Sent Events (SSE)."""
     async def event_generator() -> AsyncGenerator[str, None]:
-        events = get_demo_diagnosis_events()
-        for ev in events:
-            envelope = SSEEventEnvelope(**ev)
-            yield f"data: {envelope.model_dump_json()}\n\n"
-            await asyncio.sleep(0.4)
+        if settings.DEMO_MODE:
+            events = get_demo_diagnosis_events()
+            for ev in events:
+                envelope = SSEEventEnvelope(**ev)
+                yield f"data: {envelope.model_dump_json()}\n\n"
+                await asyncio.sleep(0.3)
+        else:
+            async for ev in stream_diagnosis_events(incident_id=incident_id):
+                envelope = SSEEventEnvelope(**ev)
+                yield f"data: {envelope.model_dump_json()}\n\n"
+                await asyncio.sleep(0.1)
 
     return StreamingResponse(
         event_generator(),
@@ -126,10 +140,15 @@ async def stream_heal_events():
 
 
 @router.get("/heal/events", response_model=list[SSEEventEnvelope])
-def get_heal_events_polling() -> list[SSEEventEnvelope]:
+async def get_heal_events_polling(incident_id: str = "") -> list[SSEEventEnvelope]:
     """Polling fallback for diagnosis events if SSE is blocked in the client environment."""
-    events = get_demo_diagnosis_events()
-    return [SSEEventEnvelope(**ev) for ev in events]
+    if settings.DEMO_MODE:
+        return [SSEEventEnvelope(**ev) for ev in get_demo_diagnosis_events()]
+
+    events: list[SSEEventEnvelope] = []
+    async for ev in stream_diagnosis_events(incident_id=incident_id):
+        events.append(SSEEventEnvelope(**ev))
+    return events
 
 
 @router.post("/actuator/execute", response_model=ActuatorExecuteResponse)

@@ -9,3 +9,4 @@ pytest==8.1.1
 anyio==4.3.0
 python-dotenv==1.0.1
 neo4j==5.18.0
+litellm>=1.106.0

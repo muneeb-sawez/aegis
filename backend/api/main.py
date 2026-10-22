@@ -4,7 +4,8 @@ Mounts:
 - Graph & Topology Routes (/api/graph/topology, /api/reset)
 - Simulation Routes (/api/simulate-pr)
 - Chaos Routes (/api/chaos/inject)
-- Healing & Actuator Routes (/api/heal/stream, /api/actuator/execute, /api/memory/commit)
+- Healing & Diagnosis SSE (/api/heal/stream, /api/memory/commit)
+- Executor Routes (/api/actuator/execute, /api/actuator/approve, /api/decisions)
 - Ingestion Routes (/api/ingest/repository, /api/graph/external-service)
 - Monitor Routes (/api/monitor/status, /api/monitor/check-now, /api/monitor/fault, /api/monitor/configure)
 - PREDICT Routes (/api/predict/analyze)
@@ -13,6 +14,7 @@ Mounts:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.routes_actuator import router as actuator_router
 from backend.api.routes_chaos import router as chaos_router
 from backend.api.routes_graph import router as graph_router
 from backend.api.routes_heal import router as heal_router
@@ -58,6 +60,7 @@ app.include_router(graph_router)
 app.include_router(sim_router)
 app.include_router(chaos_router)
 app.include_router(heal_router)
+app.include_router(actuator_router)   # Executor: /api/actuator/execute, /approve, /api/decisions
 app.include_router(ingestion_router)
 app.include_router(monitor_router)
 app.include_router(predict_router)
@@ -98,7 +101,7 @@ def read_root(request: Request):
         "system": "AEGIS",
         "motto": "See every risk before it ships. Heal every failure after it lands.",
         "phase": 1,
-        "capabilities": ["PREDICT", "MONITOR", "INGESTION"],
+        "capabilities": ["PREDICT", "MONITOR", "INGESTION", "EXECUTOR"],
         "status": "operational",
         "docs_url": "/docs",
     }

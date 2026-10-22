@@ -31,9 +31,25 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="API Key for Google Gemini")
     GROQ_API_KEY: Optional[str] = Field(default=None, description="API Key for Groq")
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Base URL for local Ollama service")
+    DEMO_MODE: bool = Field(default=False, description="When True, stream scripted demo diagnosis; when False, run real LLM agent")
+
+    # Executor Settings (M7)
+    EXECUTION_MODE: str = Field(
+        default="approve",
+        description="'approve' = human must approve; 'auto' = execute immediately. Default: approve.",
+    )
+    ACTUATOR_TARGET_BASE_URL: str = Field(
+        default="",
+        description="Base URL for target services' admin API. Empty = emulated mode (Phase 1).",
+    )
+    ACTUATOR_HMAC_SECRET: str = Field(
+        default="dev-hmac-secret",
+        description="HMAC secret for signing actuator requests. Override in production via env.",
+    )
 
     # Ingestion Settings
     GITHUB_TOKEN: Optional[str] = Field(default=None, description="GitHub Personal Access Token for ingestion")
+
 
     # Health Monitoring & Anomaly Detection Rules
     BASELINE_WINDOW: int = Field(default=5, description="Number of healthy probes to compute baseline latency")

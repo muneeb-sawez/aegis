@@ -63,7 +63,7 @@ class InjectFaultResponse(BaseModel):
 
 # 4. SSE Event Envelope (docs/02-CONTRACTS.md §5)
 class SSEEventEnvelope(BaseModel):
-    type: Literal["thought", "cypher", "result", "candidates", "done"]
+    type: Literal["thought", "query", "cypher", "result", "candidates", "done", "error"]
     ts: str
     payload: dict[str, Any]
 

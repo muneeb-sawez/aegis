@@ -9,7 +9,10 @@ import {
   XCircle,
   ArrowRight,
   GitCommit,
+  Brain,
+  Search,
 } from 'lucide-react';
+import { apiUrl } from '../config';
 
 interface ActuatorPageProps {
   onNavigate?: (page: string, serviceId?: string) => void;
@@ -18,6 +21,7 @@ interface ActuatorPageProps {
 export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
   const [streamEvents, setStreamEvents] = useState<any[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [selectedAction, setSelectedAction] = useState<string>('scale_pool');
   const [poolSizeParam, setPoolSizeParam] = useState<number>(150);
@@ -27,32 +31,132 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
   const [commitResult, setCommitResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch or simulate SSE streaming diagnosis events
-  const handleStartDiagnosis = async () => {
+  // Check backend DEMO_MODE setting on mount
+  useEffect(() => {
+    fetch(apiUrl('/api/heal/config'))
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.demo_mode !== undefined) {
+          setIsDemoMode(Boolean(data.demo_mode));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Real EventSource SSE stream with 3-second polling fallback
+  const handleStartDiagnosis = () => {
     setIsStreaming(true);
     setStreamEvents([]);
     setError(null);
     setExecutionResult(null);
     setCommitResult(null);
 
-    try {
-      const resp = await fetch('/api/heal/events');
-      if (resp.ok) {
-        const events: any[] = await resp.json();
-        for (let i = 0; i < events.length; i++) {
-          await new Promise((r) => setTimeout(r, 450));
-          setStreamEvents((prev) => [...prev, events[i]]);
-          if (events[i].type === 'candidates' && events[i].payload?.candidates) {
-            setCandidates(events[i].payload.candidates);
-          }
-        }
-      } else {
-        setError('Failed to fetch diagnosis events.');
+    let activeEventSource: EventSource | null = null;
+    let pollingInterval: any = null;
+    let sseReceivedData = false;
+
+    const stopAll = () => {
+      if (activeEventSource) {
+        activeEventSource.close();
+        activeEventSource = null;
       }
-    } catch (e: any) {
-      setError(e.message || 'Error running graph diagnosis.');
-    } finally {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
       setIsStreaming(false);
+    };
+
+    const processEvent = (ev: any) => {
+      setStreamEvents((prev: any[]) => [...prev, ev]);
+
+      if (ev.payload?.demo_mode !== undefined) {
+        setIsDemoMode(Boolean(ev.payload.demo_mode));
+      }
+
+      if (ev.type === 'candidates' && ev.payload?.candidates) {
+        setCandidates(ev.payload.candidates);
+      } else if (ev.type === 'result' && ev.payload?.ranked_fixes) {
+        const fixes = ev.payload.ranked_fixes.map((fix: any) => ({
+          action: fix.action === 'restart' ? 'restart_pod' : fix.action === 'rollback' ? 'rollback_release' : 'scale_pool',
+          target: fix.target,
+          params: fix.action === 'scale_pool' ? { pool_size: 150 } : {},
+          safety_score: fix.action === 'scale_pool' ? 92.0 : fix.action === 'restart' ? 85.0 : 70.0,
+          recovery_prob: 0.9,
+          composite_score: 88.0,
+          rationale: fix.reason,
+          eligible_for_auto_exec: fix.action !== 'rollback',
+        }));
+        setCandidates(fixes);
+      }
+
+      if (ev.type === 'error') {
+        setError(ev.payload?.message || 'Error executing graph diagnosis.');
+        stopAll();
+      } else if (ev.type === 'done') {
+        stopAll();
+      }
+    };
+
+    const startPollingFallback = () => {
+      if (pollingInterval) return;
+      console.warn('SSE unavailable; falling back to polling /api/heal/events every 3s.');
+
+      const pollOnce = async () => {
+        try {
+          const resp = await fetch(apiUrl('/api/heal/events'));
+          if (resp.ok) {
+            const events: any[] = await resp.json();
+            setStreamEvents(events);
+            for (const ev of events) {
+              if (ev.type === 'candidates' && ev.payload?.candidates) {
+                setCandidates(ev.payload.candidates);
+              }
+              if (ev.payload?.demo_mode !== undefined) {
+                setIsDemoMode(Boolean(ev.payload.demo_mode));
+              }
+            }
+            const lastEvent = events[events.length - 1];
+            if (lastEvent?.type === 'done' || lastEvent?.type === 'error') {
+              stopAll();
+            }
+          }
+        } catch (e: any) {
+          setError(e.message || 'Polling fallback failed.');
+          stopAll();
+        }
+      };
+
+      pollOnce();
+      pollingInterval = setInterval(pollOnce, 3000);
+    };
+
+    try {
+      activeEventSource = new EventSource(apiUrl('/api/heal/stream'));
+
+      activeEventSource.onmessage = (event) => {
+        sseReceivedData = true;
+        try {
+          const ev = JSON.parse(event.data);
+          processEvent(ev);
+        } catch (err) {
+          console.error('Failed to parse SSE line:', err);
+        }
+      };
+
+      activeEventSource.onerror = () => {
+        if (!sseReceivedData) {
+          if (activeEventSource) {
+            activeEventSource.close();
+            activeEventSource = null;
+          }
+          startPollingFallback();
+        } else {
+          stopAll();
+        }
+      };
+    } catch {
+      startPollingFallback();
     }
   };
 
@@ -219,19 +323,35 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
               <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
                 Graph Diagnosis Terminal
               </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  backgroundColor: 'rgba(234, 179, 8, 0.15)',
-                  color: '#facc15',
-                  border: '1px solid rgba(234, 179, 8, 0.35)',
-                }}
-              >
-                Demo diagnosis (scripted)
-              </span>
+              {isDemoMode ? (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+                    color: '#facc15',
+                    border: '1px solid rgba(234, 179, 8, 0.35)',
+                  }}
+                >
+                  Demo diagnosis (scripted)
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    color: '#10b981',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                  }}
+                >
+                  Real Graph LLM Agent
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isStreaming ? '#38bdf8' : '#10b981' }} />
@@ -242,10 +362,41 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
           </div>
 
           <div style={{ padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1, fontFamily: 'monospace' }}>
-            {streamEvents.map((ev, idx) => {
-              const isCypher = ev.type === 'cypher';
+            {streamEvents.map((ev: any, idx: number) => {
+              const isQuery = ev.type === 'query' || ev.type === 'cypher';
               const isCandidates = ev.type === 'candidates';
               const isResult = ev.type === 'result';
+              const isError = ev.type === 'error';
+              const isDone = ev.type === 'done';
+              const isThought = ev.type === 'thought';
+
+              const headerColor = isQuery
+                ? '#38bdf8'
+                : isCandidates
+                ? '#c084fc'
+                : isResult
+                ? '#10b981'
+                : isError
+                ? '#f87171'
+                : isDone
+                ? '#34d399'
+                : '#94a3b8';
+
+              const bgColor = isQuery
+                ? 'rgba(6, 182, 212, 0.08)'
+                : isError
+                ? 'rgba(239, 68, 68, 0.1)'
+                : isResult
+                ? 'rgba(16, 185, 129, 0.08)'
+                : '#070b14';
+
+              const borderColor = isQuery
+                ? 'rgba(6, 182, 212, 0.3)'
+                : isError
+                ? 'rgba(239, 68, 68, 0.3)'
+                : isResult
+                ? 'rgba(16, 185, 129, 0.3)'
+                : '#1e293b';
 
               return (
                 <div
@@ -253,12 +404,12 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
                   style={{
                     padding: 10,
                     borderRadius: 6,
-                    backgroundColor: isCypher ? 'rgba(6, 182, 212, 0.08)' : '#070b14',
-                    border: isCypher ? '1px solid rgba(6, 182, 212, 0.25)' : '1px solid #1e293b',
+                    backgroundColor: bgColor,
+                    border: `1px solid ${borderColor}`,
                     fontSize: 11,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 4,
+                    gap: 6,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -267,21 +418,49 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
                         fontSize: 9,
                         fontWeight: 800,
                         textTransform: 'uppercase',
-                        color: isCypher ? '#38bdf8' : isCandidates ? '#a855f7' : isResult ? '#10b981' : '#94a3b8',
+                        color: headerColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
                       }}
                     >
+                      {isThought && <Brain size={12} color="#94a3b8" />}
+                      {isQuery && <Search size={12} color="#38bdf8" />}
+                      {isResult && <CheckCircle size={12} color="#10b981" />}
+                      {isError && <AlertTriangle size={12} color="#f87171" />}
                       [{ev.type}]
                     </span>
                     <span style={{ fontSize: 9, color: '#64748b' }}>{ev.ts ? new Date(ev.ts).toLocaleTimeString() : ''}</span>
                   </div>
 
-                  {isCypher ? (
-                    <div style={{ color: '#38bdf8', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                      {ev.payload?.query}
+                  {isQuery ? (
+                    <div>
+                      <div style={{ color: '#38bdf8', fontWeight: 600 }}>{ev.payload?.query}</div>
+                      {ev.payload?.purpose && (
+                        <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>{ev.payload?.purpose}</div>
+                      )}
                     </div>
                   ) : isCandidates ? (
                     <div style={{ color: '#c084fc', lineHeight: 1.4 }}>
-                      Generated {ev.payload?.candidates?.length} ranked candidate remediation actions.
+                      Generated {ev.payload?.candidates?.length || 0} ranked candidate remediation actions.
+                    </div>
+                  ) : isResult ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ color: '#34d399', fontWeight: 700 }}>
+                        Root Cause: {ev.payload?.root_cause_node} ({ev.payload?.root_cause_type})
+                      </div>
+                      <div style={{ color: '#cbd5e1', fontSize: 10 }}>
+                        Confidence: {Math.round((ev.payload?.confidence || 0) * 100)}% | Path: {(ev.payload?.propagation_path || []).join(' → ')}
+                      </div>
+                      {ev.payload?.evidence?.length > 0 && (
+                        <div style={{ color: '#94a3b8', fontSize: 10 }}>
+                          Evidence: {ev.payload.evidence.join('; ')}
+                        </div>
+                      )}
+                    </div>
+                  ) : isError ? (
+                    <div style={{ color: '#f87171', fontWeight: 600 }}>
+                      {ev.payload?.message || ev.payload?.error || 'Diagnostic reasoning error'}
                     </div>
                   ) : (
                     <div style={{ color: '#cbd5e1', lineHeight: 1.4 }}>
@@ -347,7 +526,7 @@ export const ActuatorPage: React.FC<ActuatorPageProps> = ({ onNavigate }) => {
                 composite_score: 77.0,
                 rationale: 'Rollback paymentservice deployment to revision HEAD~1.',
               },
-            ]).map((c, idx) => {
+            ]).map((c: any, idx: number) => {
               const isSelected = selectedAction === c.action;
               const isPermitted = c.safety_score >= 85.0;
 
