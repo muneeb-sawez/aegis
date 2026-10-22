@@ -22,6 +22,7 @@ dist/
 data/endpoints.json
 data/projects.json
 data/webhook_deliveries.json
+data/github_auth.json
 
 # Local Development & Agent Scaffolding (preserved locally)
 .agent/

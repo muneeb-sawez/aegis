@@ -53,6 +53,9 @@ class Settings(BaseSettings):
         default="test-webhook-secret",
         description="Shared secret for verifying GitHub X-Hub-Signature-256 HMAC",
     )
+    GITHUB_CLIENT_ID: Optional[str] = Field(default=None, description="GitHub OAuth App Client ID")
+    GITHUB_CLIENT_SECRET: Optional[str] = Field(default=None, description="GitHub OAuth App Client Secret")
+    GITHUB_REDIRECT_URI: Optional[str] = Field(default=None, description="GitHub OAuth Redirect URI")
 
 
     # Health Monitoring & Anomaly Detection Rules

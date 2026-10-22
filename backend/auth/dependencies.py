@@ -95,6 +95,22 @@ async def require_api_key(
     store = get_project_store()
     project = store.validate_key(raw_key, project_id=target_project)
 
+    # 4b. Support GitHub User Login Token (aegis_usr_*)
+    if not project and raw_key.startswith("aegis_usr_"):
+        from backend.auth.github_store import get_github_auth_store
+        gh_store = get_github_auth_store()
+        session = gh_store.get_session_by_token(raw_key)
+        if session:
+            effective_project = target_project or "demo"
+            if not target_project or effective_project in session.connected_projects or effective_project == "demo":
+                return ProjectRecord(
+                    project_id=effective_project,
+                    name=f"GitHub: {session.user.name or session.user.username}",
+                    description=f"Authenticated via GitHub login token for @{session.user.username}",
+                    key_hash="",
+                    created_at=session.created_at,
+                )
+
     if not project:
         raise HTTPException(
             status_code=401,

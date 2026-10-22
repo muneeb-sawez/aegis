@@ -11,14 +11,14 @@
 
 ### 1.1 Automated Test Suite Results
 - **Test Command**: `python -m pytest backend/tests/ -v`
-- **Measured Result**: **169 passed, 5 skipped, 0 failed, 2 warnings** in 30.97s across 174 collected test items.
-- **Skipped Tests**: 5 integration tests in `backend/tests/test_config_and_neo4j.py` and `backend/tests/test_graph.py` skip cleanly when a live Neo4j Docker instance is not running locally (`GRAPH_BACKEND=networkx`). All 169 in-memory, security, risk, contract, executor, and webhook tests pass.
+- **Measured Result**: **175 passed, 5 skipped, 0 failed, 2 warnings** in 26.42s across 180 collected test items.
+- **Skipped Tests**: 5 integration tests in `backend/tests/test_config_and_neo4j.py` and `backend/tests/test_graph.py` skip cleanly when a live Neo4j Docker instance is not running locally (`GRAPH_BACKEND=networkx`). All 175 in-memory, security, risk, contract, executor, webhook, and GitHub authentication tests pass.
 - **Frontend Verification**: `npm run build` in `frontend/` compiles with **exit code 0** (Vite v8.3.4, TypeScript 5.x strict mode).
 - **Security Audit**: `python scripts/security_audit.py` confirms **0 unmitigated secret leaks** and **0 npm vulnerabilities**.
 
 ### 1.2 System Dimensions & Ground Truth Metrics
 - **Seeded Knowledge Graph**: 54 nodes, 142 edges (`data/topology.yaml`).
-- **REST Endpoints**: 37 OpenAPI paths / 41 HTTP operations across 11 route modules.
+- **REST Endpoints**: 43 OpenAPI paths / 47 HTTP operations across 12 route modules.
 - **Frontend Views**: 8 mounted, navigable pages in `frontend/src/pages/`.
 - **Pre-Merge Risk Model**: Multi-factor composite formula $0.35B + 0.25C + 0.20D + 0.20H$ ($R \in [0, 100]$).
 - **Incident Memory Feedback**: Dynamic $+5.0$ risk score shift on target service upon incident resolution ($H$ shift $25.0 \to 50.0 \times 0.20$).
@@ -57,6 +57,7 @@ Every capability is classified according to active implementation:
 | **HEAL: Automated Rollback** | Implemented, Tested, Demonstrated | `backend/executor/rollback.py`, `backend/executor/health.py` | 10-second post-remediation health verification watchdog. Automatically restores pre-fix snapshot if service remains unhealthy. |
 | **LEARN: Closed-Loop Feedback** | Implemented, Tested, Demonstrated | `backend/feedback/writer.py` | Persists `(:Incident)` and `(:Outcome)` nodes to graph, triggering the proven $+5.0$ risk score increase on subsequent evaluations. |
 | **SECURITY: Multi-Tenancy & Project Isolation** | Implemented, Tested | `backend/auth/`, `backend/security/` | Scoped by `project_id`. SHA-256 hashed API keys (`agk_...`), PBKDF2-HMAC-SHA256 authenticated secret encryption at rest. |
+| **SECURITY: GitHub Auth & User Login Token** | Implemented, Tested, Demonstrated | `backend/auth/github_store.py`, `backend/auth/github_service.py`, `backend/api/routes_github_auth.py` | GitHub OAuth2, personal access tokens & verified demo auth. Generates cryptographically random `aegis_usr_*` user login tokens with project linking. |
 | **INTEGRATION: GitHub App Webhooks** | Implemented, Tested | `backend/webhooks/` | HMAC-SHA256 `X-Hub-Signature-256` verification, idempotent delivery cache, changed-files scanner, and PR markdown commenter. |
 | **Live Kubernetes Pod Actuation** | Planned | `docs/phase2-parked/` | Real `kubectl` exec or K8s API client invocations. Parked for Phase 2. |
 | **Continuous eBPF Runtime Tracing** | Planned | `docs/phase2-parked/` | Kernel-space socket observation for dynamic topology discovery. Parked for Phase 2. |
