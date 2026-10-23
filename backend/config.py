@@ -57,6 +57,32 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: Optional[str] = Field(default=None, description="GitHub OAuth App Client Secret")
     GITHUB_REDIRECT_URI: Optional[str] = Field(default=None, description="GitHub OAuth Redirect URI")
 
+    # OCI Generative AI — Cohere Command A (PR Reasoning Brain)
+    OCI_ENABLED: bool = Field(
+        default=False,
+        description="Enable OCI GenAI Cohere Command A as the PR diff reasoning brain",
+    )
+    OCI_REGION: str = Field(
+        default="us-chicago-1",
+        description="Oracle Cloud region for the Generative AI endpoint",
+    )
+    OCI_COMPARTMENT_ID: Optional[str] = Field(
+        default=None,
+        description="OCI Compartment OCID — required when OCI_ENABLED=true",
+    )
+    OCI_CONFIG_FILE: str = Field(
+        default="~/.oci/config",
+        description="Path to OCI config file (used by cohere.OciClientV2 for request signing)",
+    )
+    OCI_PROFILE: str = Field(
+        default="DEFAULT",
+        description="OCI config profile name",
+    )
+    OCI_MODEL_ID: str = Field(
+        default="cohere.command-a-03-2025",
+        description="OCI GenAI model ID for the PR reasoning brain",
+    )
+
 
     # Health Monitoring & Anomaly Detection Rules
     BASELINE_WINDOW: int = Field(default=5, description="Number of healthy probes to compute baseline latency")

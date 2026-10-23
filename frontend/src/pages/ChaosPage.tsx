@@ -14,6 +14,7 @@ import {
   Sliders,
   TrendingUp,
 } from 'lucide-react';
+import { getActiveProjectId, apiUrl, getAuthHeaders } from '../config';
 
 interface ChaosPageProps {
   onNavigate?: (page: string) => void;
@@ -32,7 +33,8 @@ export const ChaosPage: React.FC<ChaosPageProps> = ({ onNavigate, initialService
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch('/api/predict/services');
+        const pid = getActiveProjectId();
+        const resp = await fetch(apiUrl(`/api/predict/services?project_id=${encodeURIComponent(pid)}`));
         if (resp.ok) {
           const data = await resp.json();
           setServices(data);
@@ -45,19 +47,25 @@ export const ChaosPage: React.FC<ChaosPageProps> = ({ onNavigate, initialService
       }
     };
     fetchServices();
+
+    const onProjectChange = () => fetchServices();
+    window.addEventListener('aegis_project_changed', onProjectChange);
+    return () => window.removeEventListener('aegis_project_changed', onProjectChange);
   }, []);
 
   const handleInjectFault = async () => {
     setIsLoading(true);
     setToastMessage(null);
     try {
-      const resp = await fetch('/api/chaos/inject', {
+      const pid = getActiveProjectId();
+      const resp = await fetch(apiUrl('/api/chaos/inject'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders(pid) },
         body: JSON.stringify({
           fault_id: faultType,
           target_service: targetService,
           duration_seconds: 300,
+          project_id: pid,
         }),
       });
 

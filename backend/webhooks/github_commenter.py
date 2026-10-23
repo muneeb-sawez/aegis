@@ -18,24 +18,36 @@ def format_risk_comment(
     risk_score: float,
     blast_radius: list[str],
     breaking_changes: Optional[list[str]] = None,
+    annotated_blast_paths: Optional[list[dict]] = None,
+    llm_reasoning: Optional[str] = None,
+    triage_summary: Optional[list[dict]] = None,
+    fallback_used: bool = True,
     project_id: str = "demo",
 ) -> str:
-    """Render a clean, rich Markdown risk report for a pull request."""
+    """Render a rich, intelligent Markdown risk report for a pull request.
+
+    Includes LLM-extracted breaking change details, annotated blast paths,
+    and a chain-of-thought reasoning block from Cohere Command A.
+    """
     if risk_score >= 80:
-        risk_badge = "🔴 **CRITICAL RISK**"
+        risk_badge = "🔴 **CRITICAL RISK — BLOCKED**"
+    elif risk_score >= 70:
+        risk_badge = "🔴 **HIGH RISK — BLOCKED**"
     elif risk_score >= 50:
-        risk_badge = "🟡 **ELEVATED RISK**"
+        risk_badge = "🟡 **ELEVATED RISK — WARN**"
     else:
-        risk_badge = "🟢 **LOW RISK**"
+        risk_badge = "🟢 **LOW RISK — APPROVED**"
 
     breaking = breaking_changes or []
     breaking_summary = (
-        f"🚨 {len(breaking)} breaking changes detected" if breaking else "✅ No breaking changes detected"
+        f"🚨 **{len(breaking)} breaking change(s) detected**"
+        if breaking
+        else "✅ No breaking changes detected"
     )
 
     blast_str = ", ".join(f"`{s}`" for s in blast_radius) if blast_radius else "*None (leaf service)*"
 
-    comment_lines = [
+    lines = [
         AEGIS_COMMENT_MARKER,
         f"## 🛡️ AEGIS Change Risk Assessment — PR #{pr_number}",
         "",
@@ -45,29 +57,61 @@ def format_risk_comment(
         "| :--- | :--- |",
         f"| **Target Service** | `{target_service}` |",
         f"| **Predicted Risk Score** | **{risk_score:.1f} / 100** |",
-        f"| **Blast Radius ({len(blast_radius)} services)** | {blast_str} |",
+        f"| **Blast Radius ({len(blast_radius)} service(s))** | {blast_str} |",
         f"| **Contract Compatibility** | {breaking_summary} |",
-        "",
-        "### 🔍 Detailed Analysis",
-        f"- **Direct Callers Affected**: {len(blast_radius)} upstream dependency paths identified in graph topology.",
+        f"| **Analysis Engine** | {'🤖 Cohere Command A (OCI)' if not fallback_used else '⚙️ Deterministic Fallback'} |",
     ]
 
+    # Breaking changes section
     if breaking:
-        comment_lines.append("- **Breaking Contract Changes**:")
+        lines += ["", "### 🚨 Detected Breaking Changes"]
         for change in breaking:
-            comment_lines.append(f"  - ⚠️ {change}")
-    else:
-        comment_lines.append("- **Contract Status**: Backward-compatible changes only.")
+            lines.append(f"- ⚠️ {change}")
 
-    comment_lines.extend(
-        [
-            "",
-            "> ℹ️ *Simulated/emulator measurement based on graph topology traversal and AST contract diffing.*",
-            f"<!-- updated_at: pr_{pr_number} -->",
+    # Annotated blast path table (from Stage 3 LLM output)
+    if annotated_blast_paths:
+        lines += ["", "### 💥 Upstream Caller Impact Analysis"]
+        lines += [
+            "| Caller Service | Hops | Severity | Failure Mode |",
+            "| :--- | :---: | :---: | :--- |",
         ]
-    )
+        severity_icons = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
+        for path in annotated_blast_paths:
+            svc = path.get("caller_service", "?")
+            hops = path.get("hops", "?")
+            sev = path.get("impact_severity", "HIGH")
+            icon = severity_icons.get(sev, "🟡")
+            failure = path.get("failure_mode", "Impact unknown")
+            lines.append(f"| `{svc}` | {hops} | {icon} {sev} | {failure} |")
 
-    return "\n".join(comment_lines)
+    # LLM chain-of-thought reasoning block
+    if llm_reasoning:
+        lines += ["", "### 🤖 AI Reasoning (Cohere Command A)"]
+        for part in llm_reasoning.split("\n\n"):
+            if part.strip():
+                lines.append(f"> {part.strip()}")
+
+    # Triage summary (which files were analyzed)
+    if triage_summary:
+        contract_files = [
+            t for t in triage_summary
+            if t.get("risk_category") in ("CONTRACT", "BEHAVIORAL")
+        ]
+        if contract_files:
+            lines += ["", "### 🔍 Files Analyzed"]
+            for t in contract_files[:5]:  # show up to 5
+                cat = t.get("risk_category", "?")
+                fn = t.get("filename", "?").split("/")[-1]
+                svc = t.get("inferred_service", "unknown")
+                lines.append(f"- `{fn}` — **{cat}** (service: `{svc}`)")
+
+    lines += [
+        "",
+        "> ℹ️ *Risk score computed by AEGIS: 0.35·Blast + 0.30·Contract + 0.15·Cycle + 0.20·History*",
+        f"<!-- updated_at: pr_{pr_number} -->",
+    ]
+
+    return "\n".join(lines)
 
 
 async def get_existing_comment_id(

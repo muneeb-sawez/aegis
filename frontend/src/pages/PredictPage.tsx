@@ -6,6 +6,7 @@ import {
   GitPullRequest,
   Layers,
 } from 'lucide-react';
+import { getActiveProjectId, apiUrl } from '../config';
 
 export const PredictPage: React.FC = () => {
   const [services, setServices] = useState<any[]>([]);
@@ -22,7 +23,8 @@ export const PredictPage: React.FC = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch('/api/predict/services');
+        const pid = getActiveProjectId();
+        const resp = await fetch(apiUrl(`/api/predict/services?project_id=${encodeURIComponent(pid)}`));
         if (resp.ok) {
           const data = await resp.json();
           setServices(data);
@@ -35,17 +37,23 @@ export const PredictPage: React.FC = () => {
       }
     };
     fetchServices();
+
+    const onProjectChange = () => fetchServices();
+    window.addEventListener('aegis_project_changed', onProjectChange);
+    return () => window.removeEventListener('aegis_project_changed', onProjectChange);
   }, []);
 
   const handleRunAnalysis = async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const pid = getActiveProjectId();
       const payload: any = {
         service_id: selectedService,
         change_type: changeType,
         change_title: changeTitle,
         description: changeDesc,
+        project_id: pid,
       };
 
       if (changeType === 'dependency_add' || changeType === 'dependency_cycle') {
@@ -59,7 +67,7 @@ export const PredictPage: React.FC = () => {
         payload.added_fields = ['loyalty_rewards_id', 'metadata_tags'];
       }
 
-      const resp = await fetch('/api/predict/analyze', {
+      const resp = await fetch(apiUrl('/api/predict/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

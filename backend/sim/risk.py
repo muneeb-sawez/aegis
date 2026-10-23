@@ -101,7 +101,18 @@ def assess_change_risk(
     risk_score = round(min(100.0, max(0.0, composite_raw)), 1)
 
     # 6. Gate Verdict
-    if risk_score >= config.threshold_block:
+    # Hard Gate Rule: If a breaking API contract change is detected (C == 100.0),
+    # it must NEVER be marked 'Approved' regardless of weighted score.
+    # Breaking contracts require at least SRE review (Blocked or Warn).
+    if contract_res.is_breaking:
+        # Minimum risk floor of 70.0 (or threshold_block) for breaking API changes
+        risk_score = max(risk_score, config.threshold_block)
+        verdict = "Blocked"
+        recommendation = (
+            f"Deployment BLOCKED: Critical API contract breaking change detected in '{pr.target_service}'. "
+            "Upstream consumers will experience deserialization/runtime failures without consumer-side coordination."
+        )
+    elif risk_score >= config.threshold_block:
         verdict = "Blocked"
         recommendation = (
             f"Deployment blocked: Risk score of {risk_score} exceeds safety threshold ({config.threshold_block}). "
