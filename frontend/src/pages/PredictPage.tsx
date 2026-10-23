@@ -11,6 +11,9 @@ import {
   Network,
   Flame,
   ArrowRight,
+  Loader2,
+  Activity,
+  Cpu,
 } from 'lucide-react';
 import { getActiveProjectId, apiUrl } from '../config';
 
@@ -23,6 +26,7 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
   const [livePrs, setLivePrs] = useState<any[]>([]);
   const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(null);
   const [isEvaluatingPr, setIsEvaluatingPr] = useState(false);
+  const [evalStep, setEvalStep] = useState(0);
   const [services, setServices] = useState<any[]>([]);
   const [selectedService, setSelectedService] = useState('customers-service');
   const [changeType, setChangeType] = useState('api_breaking');
@@ -32,6 +36,17 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isEvaluatingPr && !isLoading) {
+      setEvalStep(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setEvalStep((prev) => (prev < 3 ? prev + 1 : prev));
+    }, 1100);
+    return () => clearInterval(timer);
+  }, [isEvaluatingPr, isLoading]);
 
   // Fetch live Pull Requests for the active project
   const fetchLivePrs = async () => {
