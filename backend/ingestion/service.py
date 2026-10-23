@@ -235,18 +235,29 @@ async def import_github_repository_to_project(
     )
     result = await ingest_repository_or_manifest(ingest_req)
 
-    # Bind repo to ProjectRecord in project store
+    # Bind repo to ProjectRecord in project store (auto-provision if not exists)
     try:
         from backend.auth.store import get_project_store
         pstore = get_project_store()
-        if pstore.get_project(effective_pid):
-            normalized_name = req.repo_full_name.strip()
-            try:
-                owner, repo_clean = parse_github_repo_url(normalized_name)
-                normalized_name = f"{owner}/{repo_clean}"
-            except Exception:
-                pass
+        normalized_name = req.repo_full_name.strip()
+        try:
+            owner, repo_clean = parse_github_repo_url(normalized_name)
+            normalized_name = f"{owner}/{repo_clean}"
+        except Exception:
+            pass
 
+        if not pstore.get_project(effective_pid):
+            try:
+                proj_title = normalized_name.split("/")[-1].replace("-", " ").replace("_", " ").title()
+                pstore.create_project(
+                    project_id=effective_pid,
+                    name=proj_title or effective_pid,
+                    description=f"Project integrated from GitHub repository '{normalized_name}'.",
+                )
+            except Exception as pe:
+                logger.debug("Project auto-provision notice: %s", pe)
+
+        if pstore.get_project(effective_pid):
             pstore.bind_repository(
                 project_id=effective_pid,
                 repo_full_name=normalized_name,

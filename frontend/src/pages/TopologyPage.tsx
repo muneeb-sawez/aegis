@@ -18,6 +18,7 @@ import {
   Activity,
   CheckCircle,
   Flame,
+  KeyRound,
 } from 'lucide-react';
 import {
   CriticalNode,
@@ -26,6 +27,12 @@ import {
   IamRoleNode,
 } from '../components/CustomNodes';
 import { LatencySparkline } from '../components/LatencySparkline';
+import {
+  getActiveProjectId,
+  setActiveProjectId,
+  getAuthHeaders,
+  apiUrl,
+} from '../config';
 
 const nodeTypes = {
   criticalNode: CriticalNode,
@@ -50,11 +57,16 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [streamMode, setStreamMode] = useState<'sse' | 'polling' | 'connecting'>('connecting');
   const [lastEventTime, setLastEventTime] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectIdState] = useState<string>(getActiveProjectId());
+  const [projectsList, setProjectsList] = useState<any[]>([]);
 
-  const loadTopology = useCallback(async () => {
+  const loadTopology = useCallback(async (targetPid?: string) => {
+    const pid = targetPid || activeProjectId;
     setIsLoading(true);
     try {
-      const resp = await fetch('/api/graph/topology');
+      const resp = await fetch(apiUrl(`/api/graph/topology?project_id=${pid}`), {
+        headers: getAuthHeaders(pid),
+      });
       if (resp.ok) {
         const data = await resp.json();
         const topoNodes = data.nodes || [];
@@ -62,10 +74,12 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         setRawNodes(topoNodes);
         setRawEdges(topoEdges);
 
-        // Fetch current health state snapshot
+        // Fetch current health state snapshot for active project
         let healthMap = new Map<string, any>();
         try {
-          const hResp = await fetch('/api/monitor/status');
+          const hResp = await fetch(apiUrl(`/api/monitor/status?project_id=${pid}`), {
+            headers: getAuthHeaders(pid),
+          });
           if (hResp.ok) {
             const hList = await hResp.json();
             for (const h of hList) {
@@ -77,11 +91,11 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         }
 
         const knownMap: Record<string, { x: number; y: number; type?: string }> = {
+          // Online Boutique / Core Demo Topology
           'internet': { x: 440, y: 30, type: 'serviceNode' },
           'route53': { x: 250, y: 90, type: 'serviceNode' },
           'waf': { x: 630, y: 90, type: 'serviceNode' },
           'prod-db': { x: 170, y: 200, type: 'criticalNode' },
-          'api-gateway': { x: 400, y: 150, type: 'criticalNode' },
           'checkoutservice': { x: 580, y: 210, type: 'criticalNode' },
           'db-replica-1': { x: 180, y: 360, type: 'serviceNode' },
           'db-replica-2': { x: 300, y: 360, type: 'serviceNode' },
@@ -93,6 +107,22 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           'app-role': { x: 340, y: 550, type: 'iamRoleNode' },
           'deploy-role': { x: 500, y: 550, type: 'iamRoleNode' },
           'dba-role': { x: 660, y: 550, type: 'iamRoleNode' },
+
+          // Spring Petclinic Java Microservices Architecture Layout
+          'api-gateway': { x: 420, y: 50, type: 'criticalNode' },
+          'customers-service': { x: 180, y: 220, type: 'criticalNode' },
+          'visits-service': { x: 420, y: 220, type: 'criticalNode' },
+          'vets-service': { x: 660, y: 220, type: 'criticalNode' },
+          'genai-service': { x: 900, y: 220, type: 'serviceNode' },
+          'mysql-customers': { x: 180, y: 410, type: 'serviceNode' },
+          'mysql-visits': { x: 420, y: 410, type: 'serviceNode' },
+          'mysql-vets': { x: 660, y: 410, type: 'serviceNode' },
+          'config-server': { x: 180, y: 50, type: 'serviceNode' },
+          'discovery-server': { x: 660, y: 50, type: 'serviceNode' },
+          'admin-server': { x: 900, y: 50, type: 'serviceNode' },
+          'tracing-server': { x: 900, y: 410, type: 'serviceNode' },
+          'prometheus-server': { x: 1080, y: 140, type: 'serviceNode' },
+          'grafana-server': { x: 1080, y: 280, type: 'serviceNode' },
         };
 
         const cols = Math.min(5, Math.max(3, Math.ceil(Math.sqrt(topoNodes.length))));
@@ -108,14 +138,14 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             pos = { x: known.x, y: known.y };
             if (known.type) nodeType = known.type;
           } else {
-            if (n.label === 'Database') nodeType = 'serviceNode';
+            if (n.label === 'Database' || n.id.includes('mysql') || n.id.includes('postgres')) nodeType = 'serviceNode';
             else if (n.label === 'ExternalService' || n.id.startsWith('ext-')) nodeType = 'serviceNode';
-            else if (n.id.includes('gateway') || n.id.includes('checkout') || n.id.includes('payment')) nodeType = 'criticalNode';
+            else if (n.id.includes('gateway') || n.id.includes('checkout') || n.id.includes('payment') || n.id.includes('customer') || n.id.includes('visit')) nodeType = 'criticalNode';
           }
 
           const isCritical = nodeType === 'criticalNode';
           const isExternal = n.label === 'ExternalService' || n.id.startsWith('ext-');
-          const isDb = n.label === 'Database';
+          const isDb = n.label === 'Database' || n.id.includes('mysql') || n.id.includes('postgres') || n.id.includes('redis');
 
           const badge = isCritical ? 'CRITICAL' : isExternal ? 'EXTERNAL' : isDb ? 'DATABASE' : undefined;
           const iconType = isDb ? 'db' : (isExternal || n.id.includes('gateway')) ? 'gateway' : 'service';
@@ -129,7 +159,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             data: {
               raw: n,
               label: n.id,
-              sublabel: n.properties?.name || n.label || 'Service',
+              sublabel: n.properties?.name || n.properties?.technology || n.label || 'Service',
               iconType,
               status: isCritical ? 'critical' : 'normal',
               badge,
@@ -146,7 +176,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         });
 
         const flowEdges: Edge[] = topoEdges.map((e: any, idx: number) => {
-          const isCritical = e.type === 'CALLS' && (e.source.includes('checkout') || e.target.includes('payment') || e.target.includes('prod-db'));
+          const isCritical = e.type === 'CALLS' && (e.source.includes('checkout') || e.target.includes('payment') || e.target.includes('prod-db') || e.source.includes('gateway'));
           const isContainment = e.type === 'CONTAINS' || e.type === 'HOSTED_ON';
 
           return {
@@ -171,11 +201,36 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [activeProjectId, setNodes, setEdges]);
 
   useEffect(() => {
-    loadTopology();
+    loadTopology(activeProjectId);
+  }, [loadTopology, activeProjectId]);
+
+  useEffect(() => {
+    const onProjChanged = (e: any) => {
+      const newPid = e.detail?.projectId || getActiveProjectId();
+      setActiveProjectIdState(newPid);
+      loadTopology(newPid);
+    };
+    window.addEventListener('aegis_project_changed', onProjChanged);
+    return () => window.removeEventListener('aegis_project_changed', onProjChanged);
   }, [loadTopology]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const resp = await fetch(apiUrl('/api/projects'));
+        if (resp.ok) {
+          const list = await resp.json();
+          setProjectsList(list);
+        }
+      } catch (err) {
+        console.error('Failed to load projects list in topology:', err);
+      }
+    };
+    fetchProjects();
+  }, [activeProjectId]);
 
   // Live SSE connection with automatic 3s polling fallback
   useEffect(() => {
@@ -311,11 +366,14 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
     setIsLoading(true);
     setResetMessage(null);
     try {
-      const resp = await fetch('/api/reset', { method: 'POST' });
+      const resp = await fetch(apiUrl(`/api/reset?project_id=${activeProjectId}`), {
+        method: 'POST',
+        headers: getAuthHeaders(activeProjectId),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setResetMessage(`Reset successfully: ${data.node_count} nodes, ${data.edge_count} edges.`);
-        await loadTopology();
+        await loadTopology(activeProjectId);
       }
     } catch (e) {
       console.error('Reset baseline error:', e);
@@ -375,10 +433,59 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           zIndex: 10,
         }}
       >
-        {/* Left: Search & Layer Filter */}
+        {/* Left: Project Selector, Search & Layer Filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* Multi-Project Context Dropdown */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '5px 12px',
+              borderRadius: 6,
+              backgroundColor: '#070b14',
+              border: '1px solid #1e293b',
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.1)',
+            }}
+          >
+            <KeyRound size={13} color="#38bdf8" />
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Active Graph:</span>
+            <select
+              value={activeProjectId}
+              onChange={(e) => {
+                const newPid = e.target.value;
+                setActiveProjectId(newPid);
+                setActiveProjectIdState(newPid);
+                loadTopology(newPid);
+              }}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#38bdf8',
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {projectsList.length > 0 ? (
+                projectsList.map((p) => (
+                  <option key={p.project_id} value={p.project_id} style={{ backgroundColor: '#0a101d', color: '#f8fafc' }}>
+                    {p.name} ({p.node_count ?? '?'} nodes) {p.repo_full_name ? `• ${p.repo_full_name}` : ''}
+                  </option>
+                ))
+              ) : (
+                <option value={activeProjectId} style={{ backgroundColor: '#0a101d', color: '#f8fafc' }}>
+                  {activeProjectId}
+                </option>
+              )}
+            </select>
+          </div>
+
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Search size={14} color="#64748b" style={{ position: 'absolute', left: 10 }} />
+
             <input
               type="text"
               placeholder="Search nodes in graph..."
@@ -532,7 +639,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           </button>
 
           <button
-            onClick={loadTopology}
+            onClick={() => loadTopology(activeProjectId)}
             disabled={isLoading}
             style={{
               display: 'flex',

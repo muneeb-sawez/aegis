@@ -250,9 +250,124 @@ services:
       - appointment-api
 """,
     },
+    "spring-petclinic/spring-petclinic-microservices": {
+        "name": "Spring Petclinic Java Microservices",
+        "slug": "spring-petclinic/spring-petclinic-microservices",
+        "description": "Cloud-native Java / Spring Boot reference microservices architecture with Spring Cloud Gateway, Eureka, Config Server, and dedicated datastores.",
+        "services_count": 13,
+        "primary_language": "Java / Spring Boot",
+        "yaml": """version: '3.8'
+
+services:
+  api-gateway:
+    image: springcommunity/spring-petclinic-api-gateway:3.1.0
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - CUSTOMERS_SERVICE_URL=http://customers-service:8081
+      - VISITS_SERVICE_URL=http://visits-service:8082
+      - VETS_SERVICE_URL=http://vets-service:8083
+    depends_on:
+      - config-server
+      - discovery-server
+
+  customers-service:
+    image: springcommunity/spring-petclinic-customers-service:3.1.0
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
+      - MYSQL_URL=mysql-customers:3306
+    depends_on:
+      - config-server
+      - discovery-server
+      - mysql-customers
+
+  visits-service:
+    image: springcommunity/spring-petclinic-visits-service:3.1.0
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
+      - MYSQL_URL=mysql-visits:3306
+    depends_on:
+      - config-server
+      - discovery-server
+      - mysql-visits
+
+  vets-service:
+    image: springcommunity/spring-petclinic-vets-service:3.1.0
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
+      - MYSQL_URL=mysql-vets:3306
+    depends_on:
+      - config-server
+      - discovery-server
+      - mysql-vets
+
+  discovery-server:
+    image: springcommunity/spring-petclinic-discovery-server:3.1.0
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config-server
+
+  config-server:
+    image: springcommunity/spring-petclinic-config-server:3.1.0
+    ports:
+      - "8888:8888"
+
+  admin-server:
+    image: springcommunity/spring-petclinic-admin-server:3.1.0
+    ports:
+      - "9090:9090"
+    depends_on:
+      - config-server
+      - discovery-server
+
+  tracing-server:
+    image: openzipkin/zipkin:2.24
+    ports:
+      - "9411:9411"
+
+  mysql-customers:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+
+  mysql-visits:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+
+  mysql-vets:
+    image: mysql:8.0
+    ports:
+      - "3308:3306"
+
+  prometheus-server:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9091:9090"
+
+  grafana-server:
+    image: grafana/grafana:10.0.3
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus-server
+""",
+    },
 }
 
 # Alias common demo repos to verified topologies for zero-friction testing
 SAMPLE_REPOSITORIES["googlecloudplatform/microservices-demo"] = SAMPLE_REPOSITORIES["shop-sphere/ecommerce-core"]
 SAMPLE_REPOSITORIES["muneeb-sawez/aegis"] = SAMPLE_REPOSITORIES["shop-sphere/ecommerce-core"]
+SAMPLE_REPOSITORIES["spring-petclinic"] = SAMPLE_REPOSITORIES["spring-petclinic/spring-petclinic-microservices"]
+SAMPLE_REPOSITORIES["spring-projects/spring-petclinic"] = SAMPLE_REPOSITORIES["spring-petclinic/spring-petclinic-microservices"]
+SAMPLE_REPOSITORIES["spring-projects/spring-petclinic-microservices"] = SAMPLE_REPOSITORIES["spring-petclinic/spring-petclinic-microservices"]
+
 

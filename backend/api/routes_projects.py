@@ -122,3 +122,110 @@ def get_project_details(project_id: str) -> ProjectPublic:
         repo_branch=record.repo_branch,
         manifest_path=record.manifest_path,
     )
+
+
+class IntegrateGitHubProjectRequest(BaseModel):
+    repo_url: str = Field(..., description="GitHub repository URL or slug (e.g. 'https://github.com/spring-petclinic/spring-petclinic-microservices')")
+    project_id: Optional[str] = Field(None, description="Optional custom project ID/slug. Defaults to repository name.")
+    name: Optional[str] = Field(None, description="Optional human-readable project title")
+    branch: Optional[str] = Field("main", description="Target Git branch")
+    mode: Optional[str] = Field("replace", description="Graph ingestion mode: 'replace' or 'merge'")
+
+
+class IntegrateGitHubProjectResponse(BaseModel):
+    project_id: str
+    name: str
+    description: str
+    repo_full_name: str
+    repo_branch: str
+    nodes_added: int
+    edges_added: int
+    total_nodes: int
+    total_edges: int
+    services_discovered: list[str]
+    message: str
+    api_key: Optional[str] = None
+
+
+@router.post("/integrate-github", response_model=IntegrateGitHubProjectResponse, status_code=201)
+async def integrate_github_project(req: IntegrateGitHubProjectRequest) -> IntegrateGitHubProjectResponse:
+    """Seamlessly integrate a project directly via its GitHub repository link.
+    
+    1. Parses repository slug/URL.
+    2. Auto-provisions the project tenant in storage if not already registered.
+    3. Fetches and parses microservice manifests from GitHub.
+    4. Builds and populates the isolated architecture knowledge graph.
+    5. Returns project summary and topology metrics.
+    """
+    from backend.ingestion.github_fetcher import parse_github_repo_url
+    from backend.ingestion.models import GitHubRepoImportRequest
+    from backend.ingestion.service import import_github_repository_to_project
+
+    raw_url = req.repo_url.strip()
+    if not raw_url:
+        raise HTTPException(status_code=400, detail="Repository URL cannot be empty")
+
+    try:
+        owner, repo_name = parse_github_repo_url(raw_url)
+        normalized_slug = f"{owner}/{repo_name}"
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Derive clean project_id slug
+    if req.project_id and req.project_id.strip():
+        clean_pid = req.project_id.strip().lower()
+    else:
+        clean_pid = repo_name.lower().replace(".", "-").replace("_", "-")
+
+    clean_pid = re.sub(r"[^a-z0-9-_]", "", clean_pid) or "github-project"
+
+    store = get_project_store()
+    existing = store.get_project(clean_pid)
+    raw_key = None
+
+    if not existing:
+        proj_name = req.name.strip() if req.name else repo_name.replace("-", " ").replace("_", " ").title()
+        record, raw_key = store.create_project(
+            project_id=clean_pid,
+            name=proj_name,
+            description=f"Integrated from GitHub repository '{normalized_slug}'.",
+        )
+    else:
+        record = existing
+
+    # Import GitHub manifest and build graph topology
+    import_req = GitHubRepoImportRequest(
+        repo_full_name=normalized_slug,
+        branch=req.branch or "main",
+        mode=req.mode or "replace",
+        project_id=clean_pid,
+    )
+
+    try:
+        ingest_result = await import_github_repository_to_project(
+            req=import_req,
+            project_id=clean_pid,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to ingest GitHub repository: {e}")
+
+    repo = get_repository()
+    topo = repo.get_topology(project_id=clean_pid)
+
+    return IntegrateGitHubProjectResponse(
+        project_id=clean_pid,
+        name=record.name,
+        description=record.description,
+        repo_full_name=normalized_slug,
+        repo_branch=req.branch or "main",
+        nodes_added=ingest_result.nodes_added,
+        edges_added=ingest_result.edges_added,
+        total_nodes=len(topo.nodes),
+        total_edges=len(topo.edges),
+        services_discovered=ingest_result.services_discovered,
+        message=f"Repository '{normalized_slug}' successfully integrated into project '{clean_pid}'. Knowledge graph mapped with {len(topo.nodes)} services and {len(topo.edges)} dependencies.",
+        api_key=raw_key,
+    )
+

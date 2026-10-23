@@ -277,7 +277,7 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
   };
 
   // Online Git Link Direct Import handler
-  const [onlineGitUrl, setOnlineGitUrl] = useState<string>('https://github.com/GoogleCloudPlatform/microservices-demo');
+  const [onlineGitUrl, setOnlineGitUrl] = useState<string>('https://github.com/spring-petclinic/spring-petclinic-microservices');
   const [onlineGitBranch, setOnlineGitBranch] = useState<string>('main');
   const [isImportingGitUrl, setIsImportingGitUrl] = useState<boolean>(false);
 
@@ -294,11 +294,11 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
         'Content-Type': 'application/json',
         ...getAuthHeaders(activeProjectId),
       };
-      const resp = await fetch(apiUrl(`/api/projects/${activeProjectId}/import-github`), {
+      const resp = await fetch(apiUrl('/api/projects/integrate-github'), {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          repo_full_name: targetUrl,
+          repo_url: targetUrl,
           branch: onlineGitBranch.trim() || 'main',
           mode: 'replace',
         }),
@@ -306,19 +306,23 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
 
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.detail || `Failed to import online git link (HTTP ${resp.status})`);
+        throw new Error(errData.detail || `Failed to integrate git repository (HTTP ${resp.status})`);
       }
 
       const data = await resp.json();
       setImportResult(data);
-      fetchProjects();
-      fetchGitHubStatus(activeProjectId);
+      const effectiveId = data.project_id || activeProjectId;
+      setActiveProjectId(effectiveId);
+      setActiveId(effectiveId);
+      await fetchProjects();
+      await fetchGitHubStatus(effectiveId);
     } catch (err: any) {
-      setImportError(err.message || 'Error importing online git repository');
+      setImportError(err.message || 'Error integrating online git repository');
     } finally {
       setIsImportingGitUrl(false);
     }
   };
+
 
   const fetchOAuthUrl = useCallback(async () => {
     try {
@@ -974,8 +978,262 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
         </div>
       </div>
 
-      {/* TAB 1: PROJECTS TABLE */}
+      {/* TAB 1: PROJECTS TABLE & GITHUB INTEGRATION HERO */}
       {activeTab === 'projects' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* GitHub Direct Repository Integration Card */}
+          <div
+            style={{
+              padding: '20px 24px',
+              borderRadius: 8,
+              backgroundColor: '#0a101d',
+              border: '1px solid #1e293b',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 220,
+                height: '100%',
+                background: 'radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 70%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#38bdf8',
+                  }}
+                >
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>Integrate Project via GitHub Repository Link</span>
+                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontWeight: 700 }}>
+                      DIRECT GRAPH ENGINE
+                    </span>
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: 12, color: '#94a3b8' }}>
+                    Paste any public Git link (e.g. Spring Petclinic Java Microservices). AEGIS auto-provisions the project, builds the microservice architecture graph, and displays the topology.
+                  </p>
+                </div>
+              </div>
+
+              {importResult && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.('topology')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    borderRadius: 6,
+                    backgroundColor: '#10b981',
+                    border: '1px solid #34d399',
+                    color: '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  <span>Open In Topology Canvas</span>
+                  <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Integration Form */}
+            <form onSubmit={handleImportOnlineGitUrl} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Globe size={15} color="#64748b" style={{ position: 'absolute', left: 12, top: 11 }} />
+                <input
+                  type="text"
+                  value={onlineGitUrl}
+                  onChange={(e) => setOnlineGitUrl(e.target.value)}
+                  placeholder="e.g. https://github.com/spring-petclinic/spring-petclinic-microservices"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 36px',
+                    borderRadius: 6,
+                    backgroundColor: '#070b14',
+                    border: '1px solid #1e293b',
+                    color: '#f8fafc',
+                    fontSize: 12,
+                    outline: 'none',
+                    fontFamily: 'monospace',
+                  }}
+                />
+              </div>
+
+              <div style={{ width: 110 }}>
+                <input
+                  type="text"
+                  value={onlineGitBranch}
+                  onChange={(e) => setOnlineGitBranch(e.target.value)}
+                  placeholder="branch"
+                  title="Target Git Branch (default: main)"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    backgroundColor: '#070b14',
+                    border: '1px solid #1e293b',
+                    color: '#a5f3fc',
+                    fontSize: 12,
+                    outline: 'none',
+                    fontFamily: 'monospace',
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isImportingGitUrl || !onlineGitUrl.trim()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  backgroundColor: '#0284c7',
+                  border: '1px solid #38bdf8',
+                  color: '#ffffff',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: isImportingGitUrl ? 'wait' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 0 16px rgba(56, 189, 248, 0.3)',
+                }}
+              >
+                {isImportingGitUrl ? (
+                  <>
+                    <RefreshCw size={13} className="spin" />
+                    <span>Analyzing & Building Graph...</span>
+                  </>
+                ) : (
+                  <>
+                    <Layers size={14} />
+                    <span>Integrate & Build Graph</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick Example Presets */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Quick Presets:</span>
+              {[
+                { label: 'Spring Petclinic (Java Microservices)', url: 'https://github.com/spring-petclinic/spring-petclinic-microservices', tag: 'Java / Spring Boot' },
+                { label: 'Online Boutique (11 Services)', url: 'https://github.com/GoogleCloudPlatform/microservices-demo', tag: 'Go/Python/Java' },
+                { label: 'ShopSphere Core', url: 'shop-sphere/ecommerce-core', tag: 'TypeScript/Go' },
+                { label: 'AEGIS Monorepo', url: 'https://github.com/muneeb-sawez/aegis', tag: 'Python/React' },
+              ].map((preset) => (
+                <button
+                  key={preset.url}
+                  type="button"
+                  onClick={() => {
+                    setOnlineGitUrl(preset.url);
+                    handleImportOnlineGitUrl(undefined, preset.url);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    backgroundColor: preset.tag.includes('Java') ? 'rgba(16, 185, 129, 0.15)' : '#070b14',
+                    border: preset.tag.includes('Java') ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1e293b',
+                    color: preset.tag.includes('Java') ? '#34d399' : '#94a3b8',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{preset.label}</span>
+                  <span style={{ fontSize: 9, opacity: 0.75 }}>({preset.tag})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Success Toast */}
+            {importResult && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  borderRadius: 6,
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: '#34d399',
+                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle size={15} />
+                  <span>
+                    Successfully integrated! Graph mapped with <strong>{importResult.total_graph_nodes || importResult.total_nodes} services</strong> and <strong>{importResult.total_graph_edges || importResult.total_edges} dependencies</strong>. Active project set to <strong>'{activeProjectId}'</strong>.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate?.('topology')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                  }}
+                >
+                  View Topology Graph →
+                </button>
+              </div>
+            )}
+
+            {/* Error Notice */}
+            {importError && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  borderRadius: 6,
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#f87171',
+                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <AlertTriangle size={15} />
+                <span>{importError}</span>
+              </div>
+            )}
+          </div>
+
         <div style={{ borderRadius: 8, backgroundColor: '#0a101d', border: '1px solid #1e293b', overflow: 'hidden' }}>
           <div
             style={{
@@ -1143,6 +1401,31 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
                           </button>
 
                           <button
+                            onClick={() => {
+                              setActiveProjectId(proj.project_id);
+                              setActiveId(proj.project_id);
+                              onNavigate?.('topology');
+                            }}
+                            title="Open the topology knowledge graph for this project"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                              border: '1px solid #10b981',
+                              color: '#34d399',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Network size={12} />
+                            <span>View Graph</span>
+                          </button>
+
+                          <button
                             onClick={() => handleSwitchProject(proj.project_id)}
                             disabled={isActive}
                             style={{
@@ -1166,6 +1449,7 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
               )}
             </tbody>
           </table>
+        </div>
         </div>
       )}
 

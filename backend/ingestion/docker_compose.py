@@ -65,6 +65,15 @@ def parse_docker_compose(yaml_content: str) -> tuple[list[IngestedNode], list[In
             "error_rate": 0.001,
         }
 
+        # Detect Java / Spring Boot microservices
+        img_lower = str(image).lower()
+        name_lower = s_name.lower()
+        is_java = any(k in img_lower or k in name_lower for k in ("spring", "petclinic", "java", "jvm", "boot"))
+        if is_java:
+            node_props["technology"] = "Java / Spring Boot"
+            node_props["language"] = "Java"
+            node_props["framework"] = "Spring Cloud"
+
         nodes.append(
             IngestedNode(
                 id=s_name,
@@ -122,4 +131,27 @@ def parse_docker_compose(yaml_content: str) -> tuple[list[IngestedNode], list[In
                             )
                         )
 
+    # 3. For API Gateways, infer CALLS relationships to downstream business microservices
+    existing_calls = {(e.source, e.target) for e in edges if e.type == "CALLS"}
+    for s_name in service_names:
+        if "gateway" in s_name.lower():
+            for target in service_names:
+                if target != s_name and not is_database_service(target, services_dict.get(target, {})):
+                    t_lower = target.lower()
+                    if any(sfx in t_lower for sfx in ("service", "api", "backend", "core")):
+                        excluded_infra = ("config", "discovery", "admin", "prom", "grafana", "tracing", "zipkin")
+                        if not any(inf in t_lower for inf in excluded_infra):
+                            if (s_name, target) not in existing_calls:
+                                edges.append(
+                                    IngestedEdge(
+                                        source=s_name,
+                                        target=target,
+                                        type="CALLS",
+                                        properties={"protocol": "HTTP/REST", "inferred_route": f"/api/{target}"},
+                                        provenance="inferred",
+                                    )
+                                )
+                                existing_calls.add((s_name, target))
+
     return nodes, edges
+
