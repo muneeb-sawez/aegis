@@ -21,6 +21,7 @@ from backend.auth.github_service import (
     create_mock_github_user,
     exchange_github_oauth_code,
     fetch_github_user_profile,
+    fetch_user_repositories,
 )
 from backend.auth.github_store import (
     GitHubUserProfile,
@@ -34,6 +35,18 @@ from backend.config import settings
 logger = logging.getLogger("aegis.api.github_auth")
 
 router = APIRouter(prefix="/api/auth/github", tags=["github-auth"])
+
+
+class GitHubRepoSummary(BaseModel):
+    id: int
+    name: str
+    full_name: str
+    owner: str
+    private: bool = False
+    html_url: str
+    description: str = ""
+    default_branch: str = "main"
+    updated_at: str = ""
 
 
 class GitHubAuthRequest(BaseModel):
@@ -108,6 +121,8 @@ async def authenticate_github(req: GitHubAuthRequest) -> LoginTokenResponse:
     store = get_github_auth_store()
     user_profile: Optional[GitHubUserProfile] = None
 
+    effective_github_token: Optional[str] = None
+
     # 1. Demo / Offline Flow
     if req.demo_login or (not req.code and not req.token and settings.DEMO_MODE):
         username = req.demo_username or "muneeb-sawez"
@@ -116,10 +131,12 @@ async def authenticate_github(req: GitHubAuthRequest) -> LoginTokenResponse:
             name="Muneeb Sawez",
             email=f"{username}@users.noreply.github.com",
         )
+        effective_github_token = "demo_login_token"
     # 2. OAuth Code Exchange Flow
     elif req.code:
         try:
             github_token = await exchange_github_oauth_code(req.code)
+            effective_github_token = github_token
             user_profile = await fetch_github_user_profile(github_token)
         except GitHubAuthError as exc:
             logger.warning("GitHub OAuth code exchange failed: %s", exc)
@@ -130,6 +147,7 @@ async def authenticate_github(req: GitHubAuthRequest) -> LoginTokenResponse:
     # 3. Direct Access Token Flow
     elif req.token:
         try:
+            effective_github_token = req.token.strip()
             user_profile = await fetch_github_user_profile(req.token)
         except GitHubAuthError as exc:
             logger.warning("GitHub token authentication failed: %s", exc)
@@ -144,8 +162,28 @@ async def authenticate_github(req: GitHubAuthRequest) -> LoginTokenResponse:
         )
 
     # 4. Issue Login Token & Link to Project
-    login_resp = store.create_or_update_session(user=user_profile, project_id=req.project_id)
+    login_resp = store.create_or_update_session(
+        user=user_profile,
+        project_id=req.project_id,
+        github_access_token=effective_github_token,
+    )
     return login_resp
+
+
+@router.get("/repos", response_model=list[GitHubRepoSummary])
+async def list_github_repositories(
+    token: Optional[str] = Depends(extract_login_token),
+) -> list[GitHubRepoSummary]:
+    """List GitHub repositories accessible to the current user or demo catalog."""
+    store = get_github_auth_store()
+    gh_token: Optional[str] = None
+    if token:
+        session = store.get_session_by_token(token)
+        if session and session.github_access_token:
+            gh_token = session.github_access_token
+
+    repos_raw = await fetch_user_repositories(access_token=gh_token)
+    return [GitHubRepoSummary(**r) for r in repos_raw]
 
 
 @router.get("/me", response_model=UserSession)

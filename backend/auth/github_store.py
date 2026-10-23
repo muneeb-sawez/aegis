@@ -36,6 +36,7 @@ class UserSession(BaseModel):
     created_at: str
     last_used_at: str
     expires_at: Optional[str] = None
+    github_access_token: Optional[str] = Field(None, description="GitHub OAuth or PAT token for API calls")
 
 
 class ProjectGitHubConnection(BaseModel):
@@ -140,6 +141,7 @@ class GitHubAuthStore:
         self,
         user: GitHubUserProfile,
         project_id: Optional[str] = None,
+        github_access_token: Optional[str] = None,
     ) -> LoginTokenResponse:
         """Create or refresh a user session, issue a login token, and link to project."""
         with self._mutex:
@@ -156,6 +158,8 @@ class GitHubAuthStore:
                 session = self._sessions[token]
                 session.user = user
                 session.last_used_at = now_iso
+                if github_access_token:
+                    session.github_access_token = github_access_token
                 if project_id and project_id not in session.connected_projects:
                     session.connected_projects.append(project_id)
             else:
@@ -167,6 +171,7 @@ class GitHubAuthStore:
                     connected_projects=connected,
                     created_at=now_iso,
                     last_used_at=now_iso,
+                    github_access_token=github_access_token,
                 )
                 self._sessions[token] = session
 

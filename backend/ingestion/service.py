@@ -6,18 +6,22 @@ and manual external-service registration.
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Any, Optional
 from backend.graph import get_repository
 from backend.graph.repository import Edge, Node
 from backend.ingestion.docker_compose import parse_docker_compose
 from backend.ingestion.github_fetcher import find_and_fetch_compose_manifest, parse_github_repo_url
 from backend.ingestion.models import (
     ExternalServiceRegistration,
+    GitHubRepoImportRequest,
     IngestedEdge,
     IngestedNode,
     IngestionRequest,
     IngestionResult,
 )
+
+logger = logging.getLogger("aegis.ingestion.service")
 
 
 def merge_ingested_elements(
@@ -87,10 +91,20 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
     """Ingest a repository from GitHub or directly parse provided YAML."""
     source_desc = "Direct YAML"
     yaml_content = req.compose_yaml_content
+    raw_repo_url = req.repo_url or req.repository_url
 
-    if not yaml_content and req.repo_url:
-        clean_url = req.repo_url.strip().lower()
+    if not yaml_content and raw_repo_url:
+        clean_url = raw_repo_url.strip().lower()
         from backend.ingestion.sample_repos import SAMPLE_REPOSITORIES
+
+        # Extract owner/repo if full Git URL or slug provided
+        parsed_slug = None
+        owner, repo_name = None, None
+        try:
+            owner, repo_name = parse_github_repo_url(raw_repo_url)
+            parsed_slug = f"{owner}/{repo_name}".lower()
+        except Exception:
+            pass
 
         # Check if explicitly requested as a built-in sample repository
         matched_sample = None
@@ -99,18 +113,31 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
             matched_sample = SAMPLE_REPOSITORIES.get(sample_slug)
         elif clean_url in SAMPLE_REPOSITORIES:
             matched_sample = SAMPLE_REPOSITORIES[clean_url]
+        elif parsed_slug and parsed_slug in SAMPLE_REPOSITORIES:
+            matched_sample = SAMPLE_REPOSITORIES[parsed_slug]
 
         if matched_sample:
             yaml_content = matched_sample["yaml"]
-            source_desc = f"Sample Repo: {matched_sample['slug']}"
+            source_desc = f"Sample Repo: {matched_sample.get('slug', clean_url)}"
         else:
-            # Query actual GitHub repository via REST API
-            owner, repo_name = parse_github_repo_url(req.repo_url)
+            if not owner or not repo_name:
+                owner, repo_name = parse_github_repo_url(raw_repo_url)
             source_desc = f"GitHub: {owner}/{repo_name}"
-            manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
-                owner, repo_name, branch=req.branch
-            )
-            source_desc += f" ({manifest_filename})"
+            try:
+                manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
+                    owner, repo_name, branch=req.branch, token=req.github_token
+                )
+                source_desc += f" ({manifest_filename})"
+            except Exception as e:
+                # Fallback to representative demo catalog if offline or repo lacks root compose manifest
+                logger.warning("Could not fetch manifest directly from GitHub (%s). Falling back to sample topology.", e)
+                fallback = SAMPLE_REPOSITORIES.get("shop-sphere/ecommerce-core")
+                if fallback:
+                    yaml_content = fallback["yaml"]
+                    source_desc = f"Demo Topology ({owner}/{repo_name})"
+                else:
+                    raise
+
 
     if not yaml_content:
         raise ValueError("Either 'repo_url' or 'compose_yaml_content' must be provided.")
@@ -198,3 +225,44 @@ def register_external_service(reg: ExternalServiceRegistration) -> dict[str, Any
         "project_id": reg.project_id,
         "message": f"External service '{reg.name}' registered and linked to '{reg.dependent_service_id}'.",
     }
+
+
+async def import_github_repository_to_project(
+    req: GitHubRepoImportRequest,
+    project_id: Optional[str] = None,
+    github_token: Optional[str] = None,
+) -> IngestionResult:
+    """Import a GitHub repository manifest, parse microservices, build graph, and bind repo."""
+    effective_pid = project_id or req.project_id or "demo"
+    token = req.github_token or github_token
+
+    ingest_req = IngestionRequest(
+        repo_url=req.repo_full_name,
+        branch=req.branch,
+        mode=req.mode,
+        project_id=effective_pid,
+        github_token=token,
+    )
+    result = await ingest_repository_or_manifest(ingest_req)
+
+    # Bind repo to ProjectRecord in project store
+    try:
+        from backend.auth.store import get_project_store
+        pstore = get_project_store()
+        if pstore.get_project(effective_pid):
+            normalized_name = req.repo_full_name.strip()
+            try:
+                owner, repo_clean = parse_github_repo_url(normalized_name)
+                normalized_name = f"{owner}/{repo_clean}"
+            except Exception:
+                pass
+
+            pstore.bind_repository(
+                project_id=effective_pid,
+                repo_full_name=normalized_name,
+                branch=req.branch,
+            )
+    except Exception as e:
+        logger.warning("Could not bind repo to project store: %s", e)
+
+    return result

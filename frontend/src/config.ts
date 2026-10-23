@@ -53,6 +53,18 @@ export interface GitHubUser {
   public_repos?: number;
 }
 
+export interface GitHubRepoSummary {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: string;
+  private: boolean;
+  html_url: string;
+  description?: string;
+  default_branch: string;
+  updated_at: string;
+}
+
 export function getUserLoginToken(): string {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('aegis_user_login_token') || '';

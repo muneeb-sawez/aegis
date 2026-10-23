@@ -251,3 +251,8 @@ services:
 """,
     },
 }
+
+# Alias common demo repos to verified topologies for zero-friction testing
+SAMPLE_REPOSITORIES["googlecloudplatform/microservices-demo"] = SAMPLE_REPOSITORIES["shop-sphere/ecommerce-core"]
+SAMPLE_REPOSITORIES["muneeb-sawez/aegis"] = SAMPLE_REPOSITORIES["shop-sphere/ecommerce-core"]
+

@@ -135,3 +135,96 @@ def create_mock_github_user(
         html_url=f"https://github.com/{username.strip()}",
         public_repos=15,
     )
+
+
+DEMO_SAMPLE_REPOSITORIES = [
+    {
+        "id": 101,
+        "name": "microservices-demo",
+        "full_name": "GoogleCloudPlatform/microservices-demo",
+        "owner": "GoogleCloudPlatform",
+        "private": False,
+        "html_url": "https://github.com/GoogleCloudPlatform/microservices-demo",
+        "description": "Online Boutique: 11-tier cloud-native microservices architecture demo application.",
+        "default_branch": "main",
+        "updated_at": "2026-10-22T18:30:00Z",
+    },
+    {
+        "id": 102,
+        "name": "ecommerce-core",
+        "full_name": "shop-sphere/ecommerce-core",
+        "owner": "shop-sphere",
+        "private": False,
+        "html_url": "https://github.com/shop-sphere/ecommerce-core",
+        "description": "Enterprise cloud-native e-commerce topology with 11 microservices and external payment gateway.",
+        "default_branch": "main",
+        "updated_at": "2026-10-21T12:00:00Z",
+    },
+    {
+        "id": 103,
+        "name": "ledger-core",
+        "full_name": "fintech-nexus/ledger-core",
+        "owner": "fintech-nexus",
+        "private": True,
+        "html_url": "https://github.com/fintech-nexus/ledger-core",
+        "description": "High-throughput financial ledger, transaction router, fraud detection, and PostgreSQL audit vault.",
+        "default_branch": "main",
+        "updated_at": "2026-10-20T09:15:00Z",
+    },
+    {
+        "id": 104,
+        "name": "aegis",
+        "full_name": "muneeb-sawez/aegis",
+        "owner": "muneeb-sawez",
+        "private": False,
+        "html_url": "https://github.com/muneeb-sawez/aegis",
+        "description": "Autonomous Engineering Graph & Intelligence System for distributed microservice architectures.",
+        "default_branch": "main",
+        "updated_at": "2026-10-22T21:00:00Z",
+    },
+]
+
+
+async def fetch_user_repositories(
+    access_token: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """Fetch repositories from GitHub or return curated demo catalog if offline/demo."""
+    token = access_token or settings.GITHUB_TOKEN
+
+    if not token or settings.DEMO_MODE or token.startswith("aegis_mock_") or token.startswith("demo_"):
+        return DEMO_SAMPLE_REPOSITORIES
+
+    headers = {
+        "Authorization": f"Bearer {token.strip()}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "AEGIS-Autonomous-System/1.0",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{GITHUB_API_BASE}/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member",
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = []
+                for r in data:
+                    results.append({
+                        "id": r.get("id"),
+                        "name": r.get("name"),
+                        "full_name": r.get("full_name"),
+                        "owner": r.get("owner", {}).get("login", "") if isinstance(r.get("owner"), dict) else "",
+                        "private": bool(r.get("private")),
+                        "html_url": r.get("html_url", ""),
+                        "description": r.get("description") or "",
+                        "default_branch": r.get("default_branch", "main"),
+                        "updated_at": r.get("updated_at", ""),
+                    })
+                return results
+            else:
+                logger.warning("GitHub user repos returned status %d. Falling back to demo catalog.", resp.status_code)
+                return DEMO_SAMPLE_REPOSITORIES
+    except Exception as e:
+        logger.warning("Failed to fetch repositories from GitHub (%s). Falling back to demo catalog.", e)
+        return DEMO_SAMPLE_REPOSITORIES

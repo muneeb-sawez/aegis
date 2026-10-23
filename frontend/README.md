@@ -1,32 +1,43 @@
-# React + TypeScript + Vite
+# AEGIS Frontend — Mission Control Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Modern React 18, TypeScript, and Vite single-page application for the AEGIS reliability intelligence system.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Quickstart
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+### 1. Install Dependencies
+```bash
+npm install
 ```
+*(Make sure to run `npm install`, NOT `npm run install`)*
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### 2. Run Development Server
+```bash
+npm run dev
+```
+- **Local URL**: [http://localhost:5173](http://localhost:5173)
+- API requests made to `/api/*` are automatically proxied to the backend at `http://localhost:8000` via [vite.config.ts](file:///c:/Users/Fawaz/Desktop/M-ageis/aegis/frontend/vite.config.ts).
+
+### 3. Production Build
+```bash
+npm run build
+```
+Build output is saved to `dist/`, which is automatically mounted and served by the FastAPI backend in unified production mode.
+
+---
+
+## 🛠️ Tech Stack & Views
+
+- **Framework**: React 18 + Vite + TypeScript
+- **Styling**: Tailwind CSS
+- **Interactive Graph Visualization**: `@xyflow/react` (React Flow)
+- **State & Streaming**: Server-Sent Events (SSE) for real-time diagnostic reasoning streams
+
+### Available Dashboard Views
+- **Topology**: Interactive 2D microservice dependency graph with health badges and node telemetry.
+- **Predict (`PREDICT`)**: Pre-merge pull request risk scoring, blast radius simulation, and AST contract diffing.
+- **Monitor (`MONITOR`)**: Active HTTP probe status, latency percentiles, and error rate monitoring.
+- **Chaos (`CHAOS`)**: Controlled fault injection (latency spike, connection pool saturation, process crashes).
+- **Actuator (`HEAL`)**: Guarded remediation proposals, pre-action snapshots, and 10-second rollback watchdog.
+- **Projects**: Multi-project management and GitHub repository ingestion.

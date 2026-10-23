@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Layers,
 } from 'lucide-react';
+import { apiUrl, getAuthHeaders, getActiveProjectId } from '../config';
 
 interface IngestPageProps {
   onNavigate?: (page: string) => void;
@@ -74,12 +75,18 @@ services:
     setError(null);
     setResult(null);
     try {
-      const resp = await fetch('/api/ingest/repository', {
+      const activePid = getActiveProjectId();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(activePid),
+      };
+      const resp = await fetch(apiUrl('/api/ingest/repository'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          source: 'sample',
-          sample_slug: slug,
+          repo_url: `sample:${slug}`,
+          project_id: activePid,
+          mode: 'replace',
         }),
       });
 
@@ -102,15 +109,20 @@ services:
     setError(null);
     setResult(null);
     try {
-      const resp = await fetch('/api/ingest/repository', {
+      const activePid = getActiveProjectId();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(activePid),
+      };
+      const resp = await fetch(apiUrl('/api/ingest/repository'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          source: 'github',
-          repository_url: githubUrl,
+          repo_url: githubUrl,
           branch: githubBranch,
-          file_path: githubPath,
           github_token: githubToken || undefined,
+          project_id: activePid,
+          mode: 'replace',
         }),
       });
 
@@ -133,12 +145,18 @@ services:
     setError(null);
     setResult(null);
     try {
-      const resp = await fetch('/api/ingest/repository', {
+      const activePid = getActiveProjectId();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(activePid),
+      };
+      const resp = await fetch(apiUrl('/api/ingest/repository'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          source: 'raw_yaml',
-          raw_manifest: rawYaml,
+          compose_yaml_content: rawYaml,
+          project_id: activePid,
+          mode: 'replace',
         }),
       });
 

@@ -27,6 +27,9 @@ class ProjectRecord(BaseModel):
     description: str = ""
     key_hash: str = Field(..., description="SHA-256 hex digest of the per-project API key")
     created_at: str
+    repo_full_name: Optional[str] = None
+    repo_branch: str = "main"
+    manifest_path: Optional[str] = None
 
 
 class ProjectPublic(BaseModel):
@@ -38,6 +41,9 @@ class ProjectPublic(BaseModel):
     key_status: str = "SHA-256 Hashed"
     node_count: int = 0
     edge_count: int = 0
+    repo_full_name: Optional[str] = None
+    repo_branch: str = "main"
+    manifest_path: Optional[str] = None
 
 
 class ProjectCreationResponse(BaseModel):
@@ -170,6 +176,38 @@ class ProjectStore:
             if hmac.compare_digest(record.key_hash, candidate_hash):
                 return record
 
+        return None
+
+    def bind_repository(
+        self,
+        project_id: str,
+        repo_full_name: str,
+        branch: str = "main",
+        manifest_path: Optional[str] = None,
+    ) -> ProjectRecord:
+        """Bind a GitHub repository to a project tenant."""
+        pid = project_id.strip().lower()
+        projects = self.load_all()
+        if pid not in projects:
+            raise ValueError(f"Project '{pid}' does not exist")
+
+        record = projects[pid]
+        record.repo_full_name = repo_full_name.strip()
+        record.repo_branch = branch.strip() or "main"
+        if manifest_path:
+            record.manifest_path = manifest_path.strip()
+
+        projects[pid] = record
+        self.save_all(projects)
+        return record
+
+    def get_project_by_repo(self, repo_full_name: str) -> Optional[ProjectRecord]:
+        """Find the AEGIS project registered for a given GitHub 'owner/repo'."""
+        clean = repo_full_name.strip().lower()
+        projects = self.load_all()
+        for record in projects.values():
+            if record.repo_full_name and record.repo_full_name.strip().lower() == clean:
+                return record
         return None
 
 

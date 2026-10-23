@@ -35,10 +35,20 @@ class ExternalServiceRegistration(BaseModel):
 
 class IngestionRequest(BaseModel):
     repo_url: Optional[str] = None  # e.g. "https://github.com/GoogleCloudPlatform/microservices-demo" or "owner/repo"
+    repository_url: Optional[str] = None  # alias for repo_url
     compose_yaml_content: Optional[str] = None  # direct YAML text input
     branch: str = "main"
     mode: Literal["replace", "merge"] = "replace"
     project_id: str = "demo"
+    github_token: Optional[str] = None
+
+
+class GitHubRepoImportRequest(BaseModel):
+    repo_full_name: str = Field(..., description="GitHub 'owner/repo' (e.g. 'GoogleCloudPlatform/microservices-demo')")
+    branch: str = Field("main", description="Branch to scan for manifest files")
+    mode: Literal["replace", "merge"] = Field("replace", description="Graph update mode")
+    project_id: Optional[str] = Field(None, description="Target project ID (defaults to active project)")
+    github_token: Optional[str] = Field(None, description="Optional GitHub access token override")
 
 
 class IngestionResult(BaseModel):

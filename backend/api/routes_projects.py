@@ -47,6 +47,9 @@ def list_projects() -> list[ProjectPublic]:
                 key_status="SHA-256 Hashed",
                 node_count=len(topo.nodes),
                 edge_count=len(topo.edges),
+                repo_full_name=p.repo_full_name,
+                repo_branch=p.repo_branch,
+                manifest_path=p.manifest_path,
             )
         )
     return results
@@ -115,4 +118,7 @@ def get_project_details(project_id: str) -> ProjectPublic:
         key_status="SHA-256 Hashed",
         node_count=len(topo.nodes),
         edge_count=len(topo.edges),
+        repo_full_name=record.repo_full_name,
+        repo_branch=record.repo_branch,
+        manifest_path=record.manifest_path,
     )

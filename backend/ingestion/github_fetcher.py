@@ -79,10 +79,11 @@ async def find_and_fetch_compose_manifest(
     owner: str,
     repo: str,
     branch: str = "main",
+    token: Optional[str] = None,
 ) -> tuple[str, str]:
     """Search candidate compose files in repo root and return (filename, content)."""
     for candidate in CANDIDATE_COMPOSE_FILES:
-        content = await fetch_file_content_from_github(owner, repo, candidate, branch)
+        content = await fetch_file_content_from_github(owner, repo, candidate, branch=branch, token=token)
         if content:
             return candidate, content
 

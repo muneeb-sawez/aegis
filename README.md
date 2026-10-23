@@ -9,6 +9,80 @@ AEGIS is an open-source reliability intelligence system that models distributed 
 
 ---
 
+## ⚡ Quickstart — Running AEGIS in 3 Steps
+
+### Prerequisites
+- **Python 3.11+** (`python --version`)
+- **Node.js 18+ & npm** (`node -v` & `npm -v`)
+
+---
+
+### Step 1: Environment Setup
+In the project root, duplicate `.env.example` to `.env`:
+```powershell
+# Windows (PowerShell)
+Copy-Item .env.example .env
+
+# macOS / Linux (Bash)
+cp .env.example .env
+```
+> [!NOTE]
+> By default, `GRAPH_BACKEND=networkx` is set in `.env`, allowing AEGIS to run immediately out-of-the-box with **zero external dependencies** (no Docker or Neo4j required).
+
+---
+
+### Step 2: Install Dependencies
+
+#### A. Backend (Python)
+From the project root, install required Python packages:
+```bash
+pip install -r requirements.txt
+```
+
+#### B. Frontend (Node.js)
+Navigate to the `frontend` directory and install npm packages:
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+---
+
+### Step 3: Start the Application
+
+Run the backend and frontend in **two separate terminal windows**:
+
+#### Terminal 1 — Backend API
+```powershell
+# From the project root
+python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+- **API Base URL**: [http://localhost:8000](http://localhost:8000)
+- **Interactive Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+
+#### Terminal 2 — Frontend UI
+```powershell
+cd frontend
+npm run dev
+```
+- **Mission Control Web Dashboard**: [http://localhost:5173](http://localhost:5173) *(automatically proxies `/api` calls to port 8000)*
+
+---
+
+### 🛠️ Common Troubleshooting
+
+| Error / Symptom | Cause | Solution |
+| :--- | :--- | :--- |
+| `ModuleNotFoundError: No module named 'litellm'` | Dependencies were not installed in the active Python environment. | Run `pip install -r requirements.txt` (or `pip install litellm neo4j`). |
+| `'vite' is not recognized as an internal or external command` | `node_modules` was not created yet. | Run `npm install` inside the `frontend` folder. |
+| `Missing script: "install"` | Mistyped `npm run install` instead of `npm install`. | Use `npm install` directly inside `frontend/`. |
+| `ConnectionRefusedError: [Errno 111]` on Neo4j | `GRAPH_BACKEND=neo4j` configured without Neo4j running. | Set `GRAPH_BACKEND=networkx` in `.env` for zero-dependency local operation. |
+| LLM API Key Error / Rate Limit | No Gemini or Groq API key configured. | Set `DEMO_MODE=true` in `.env` to run fully scripted offline diagnoses without an LLM key. |
+
+---
+
 ## 1. Project Overview
 
 Modern microservice architectures frequently suffer from cascade outages caused by seemingly small modifications: an engineer modifies a field type, alters an enum, or introduces a transitive dependency that creates an architectural cycle. Traditional CI/CD pipelines run unit tests in isolation but lack architectural context. Conversely, production APM tools alert engineers only after an outage has propagated across client sessions.

@@ -6,15 +6,58 @@ from backend.auth.dependencies import require_api_key
 from backend.auth.store import ProjectRecord
 from backend.ingestion.models import (
     ExternalServiceRegistration,
+    GitHubRepoImportRequest,
     IngestionRequest,
     IngestionResult,
 )
 from backend.ingestion.service import (
+    import_github_repository_to_project,
     ingest_repository_or_manifest,
     register_external_service,
 )
 
 router = APIRouter(prefix="/api", tags=["ingestion"])
+
+
+@router.post("/projects/{project_id}/import-github", response_model=IngestionResult)
+async def import_github_repo_for_project(
+    project_id: str,
+    req: GitHubRepoImportRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> IngestionResult:
+    """Import a GitHub repository manifest, build graph topology, and bind to project."""
+    target_pid = project_id or req.project_id or _auth.project_id
+    try:
+        return await import_github_repository_to_project(
+            req=req,
+            project_id=target_pid,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"GitHub repository import failed: {e}")
+
+
+@router.post("/ingest/import-github", response_model=IngestionResult)
+async def import_github_repo_direct(
+    req: GitHubRepoImportRequest,
+    _auth: ProjectRecord = Depends(require_api_key),
+) -> IngestionResult:
+    """Direct import endpoint for GitHub repository manifest and graph generation."""
+    target_pid = req.project_id or _auth.project_id or "demo"
+    try:
+        return await import_github_repository_to_project(
+            req=req,
+            project_id=target_pid,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"GitHub repository import failed: {e}")
 
 
 @router.post("/ingest/repository", response_model=IngestionResult)

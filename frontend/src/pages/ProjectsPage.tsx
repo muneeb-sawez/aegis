@@ -22,6 +22,10 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  ArrowRight,
+  Layers,
+  Box,
+  Globe,
 } from 'lucide-react';
 import {
   getActiveProjectId,
@@ -35,7 +39,7 @@ import {
   clearUserLoginToken,
   getAuthenticatedUser,
 } from '../config';
-import type { GitHubUser } from '../config';
+import type { GitHubUser, GitHubRepoSummary } from '../config';
 
 export function GitHubIcon({ size = 16, color = 'currentColor' }: { size?: number; color?: string }) {
   return (
@@ -57,6 +61,8 @@ interface ProjectPublic {
   key_status: string;
   node_count: number;
   edge_count: number;
+  repo_full_name?: string | null;
+  repo_branch?: string;
 }
 
 interface NewProjectResponse {
@@ -161,6 +167,14 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
   const [oauthCode, setOauthCode] = useState<string>('');
   const [oauthUrlData, setOauthUrlData] = useState<{ configured: boolean; client_id: string; authorize_url: string } | null>(null);
 
+  // GitHub repository discovery & graph import states
+  const [gitHubRepos, setGitHubRepos] = useState<GitHubRepoSummary[]>([]);
+  const [isReposLoading, setIsReposLoading] = useState<boolean>(false);
+  const [repoSearchQuery, setRepoSearchQuery] = useState<string>('');
+  const [importingRepoName, setImportingRepoName] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<any | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
@@ -211,6 +225,101 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
     }
   }, []);
 
+  const fetchGitHubRepos = useCallback(async () => {
+    setIsReposLoading(true);
+    try {
+      const headers = getAuthHeaders(activeProjectId);
+      const resp = await fetch(apiUrl('/api/auth/github/repos'), { headers });
+      if (resp.ok) {
+        const data: GitHubRepoSummary[] = await resp.json();
+        setGitHubRepos(data);
+      }
+    } catch (err) {
+      console.error('Failed to load GitHub repos:', err);
+    } finally {
+      setIsReposLoading(false);
+    }
+  }, [activeProjectId]);
+
+  const handleImportGitHubRepo = async (repo: GitHubRepoSummary) => {
+    setImportingRepoName(repo.full_name);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(activeProjectId),
+      };
+      const resp = await fetch(apiUrl(`/api/projects/${activeProjectId}/import-github`), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          repo_full_name: repo.full_name,
+          branch: repo.default_branch || 'main',
+          mode: 'replace',
+        }),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to import repository (HTTP ${resp.status})`);
+      }
+
+      const data = await resp.json();
+      setImportResult(data);
+      fetchProjects();
+      fetchGitHubStatus(activeProjectId);
+    } catch (err: any) {
+      setImportError(err.message || 'Error importing repository');
+    } finally {
+      setImportingRepoName(null);
+    }
+  };
+
+  // Online Git Link Direct Import handler
+  const [onlineGitUrl, setOnlineGitUrl] = useState<string>('https://github.com/GoogleCloudPlatform/microservices-demo');
+  const [onlineGitBranch, setOnlineGitBranch] = useState<string>('main');
+  const [isImportingGitUrl, setIsImportingGitUrl] = useState<boolean>(false);
+
+  const handleImportOnlineGitUrl = async (e?: React.FormEvent, urlOverride?: string) => {
+    if (e) e.preventDefault();
+    const targetUrl = (urlOverride || onlineGitUrl).trim();
+    if (!targetUrl) return;
+
+    setIsImportingGitUrl(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(activeProjectId),
+      };
+      const resp = await fetch(apiUrl(`/api/projects/${activeProjectId}/import-github`), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          repo_full_name: targetUrl,
+          branch: onlineGitBranch.trim() || 'main',
+          mode: 'replace',
+        }),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to import online git link (HTTP ${resp.status})`);
+      }
+
+      const data = await resp.json();
+      setImportResult(data);
+      fetchProjects();
+      fetchGitHubStatus(activeProjectId);
+    } catch (err: any) {
+      setImportError(err.message || 'Error importing online git repository');
+    } finally {
+      setIsImportingGitUrl(false);
+    }
+  };
+
   const fetchOAuthUrl = useCallback(async () => {
     try {
       const resp = await fetch(apiUrl('/api/auth/github/url'));
@@ -228,7 +337,8 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
     fetchEndpoints(activeProjectId);
     fetchGitHubStatus(activeProjectId);
     fetchOAuthUrl();
-  }, [activeProjectId, fetchEndpoints, fetchGitHubStatus, fetchOAuthUrl]);
+    fetchGitHubRepos();
+  }, [activeProjectId, activeTab, fetchEndpoints, fetchGitHubStatus, fetchOAuthUrl, fetchGitHubRepos]);
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -515,6 +625,8 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
       console.error('Delete endpoint error:', e);
     }
   };
+
+  const currentProject = projects.find((p) => p.project_id === activeProjectId);
 
   const filteredProjects = projects.filter(
     (p) =>
@@ -1224,6 +1336,7 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Active User Hero & Token Status */}
           {gitHubUser ? (
+            <>
             <div style={{ borderRadius: 8, backgroundColor: '#0a101d', border: '1px solid #1e293b', overflow: 'hidden' }}>
               <div
                 style={{
@@ -1558,6 +1671,465 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
                 </div>
               </div>
             </div>
+
+            {/* Project Repository Selection & Automated Graph Construction */}
+            <div style={{ borderRadius: 8, backgroundColor: '#0a101d', border: '1px solid #1e293b', overflow: 'hidden' }}>
+              <div
+                style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: 'rgba(56, 189, 248, 0.03)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Box size={18} color="#38bdf8" />
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#f8fafc' }}>
+                      Project Repository & Architecture Graph
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 11, color: '#94a3b8' }}>
+                      Select a repository to scan manifests (docker-compose, compose.yaml) and automatically build the knowledge graph for project <span style={{ color: '#38bdf8', fontWeight: 700 }}>'{activeProjectId}'</span>.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={fetchGitHubRepos}
+                  disabled={isReposLoading}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #1e293b',
+                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <RefreshCw size={12} className={isReposLoading ? 'spin' : ''} />
+                  <span>Refresh Repos</span>
+                </button>
+              </div>
+
+              {/* Active Linked Repository Callout */}
+              {currentProject?.repo_full_name && (
+                <div
+                  style={{
+                    margin: '16px 20px 0 20px',
+                    padding: '12px 16px',
+                    borderRadius: 6,
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <CheckCircle size={18} color="#34d399" />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#f8fafc' }}>
+                          Linked Repository:
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }}>
+                          {currentProject.repo_full_name}
+                        </span>
+                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                          branch: {currentProject.repo_branch || 'main'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                        Current Architecture Graph: {currentProject.node_count} microservice nodes · {currentProject.edge_count} dependency edges mapped.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate?.('topology')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderRadius: 6,
+                      backgroundColor: '#0284c7',
+                      border: '1px solid #38bdf8',
+                      color: '#ffffff',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>Open Topology Canvas</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Success Result Toast */}
+              {importResult && (
+                <div
+                  style={{
+                    margin: '16px 20px 0 20px',
+                    padding: '12px 16px',
+                    borderRadius: 6,
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Sparkles size={18} color="#38bdf8" />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#f8fafc' }}>
+                        Knowledge Graph Successfully Generated!
+                      </div>
+                      <div style={{ fontSize: 11, color: '#a5f3fc' }}>
+                        {importResult.message} ({importResult.nodes_added} services added, {importResult.edges_added} dependencies created).
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate?.('topology')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderRadius: 6,
+                      backgroundColor: '#10b981',
+                      border: '1px solid #34d399',
+                      color: '#ffffff',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>View in Topology Canvas</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Error Toast */}
+              {importError && (
+                <div
+                  style={{
+                    margin: '16px 20px 0 20px',
+                    padding: '12px 16px',
+                    borderRadius: 6,
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <AlertTriangle size={16} />
+                  <span>{importError}</span>
+                </div>
+              )}
+
+              {/* Online Git Link Direct Import Bar */}
+              <div style={{ margin: '16px 20px 0 20px', padding: '16px', borderRadius: 8, backgroundColor: '#070b14', border: '1px solid #1e293b' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Globe size={15} color="#38bdf8" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                      Import from Online Git Link
+                    </span>
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', fontWeight: 700 }}>
+                      DIRECT HTTPS / GIT URL
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                    Paste any public Git repository link to build its graph
+                  </span>
+                </div>
+
+                <form onSubmit={handleImportOnlineGitUrl} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Globe size={14} color="#64748b" style={{ position: 'absolute', left: 12, top: 11 }} />
+                    <input
+                      type="text"
+                      value={onlineGitUrl}
+                      onChange={(e) => setOnlineGitUrl(e.target.value)}
+                      placeholder="e.g. https://github.com/GoogleCloudPlatform/microservices-demo or owner/repo"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 34px',
+                        borderRadius: 6,
+                        backgroundColor: '#0a101d',
+                        border: '1px solid #1e293b',
+                        color: '#f8fafc',
+                        fontSize: 12,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ width: 110 }}>
+                    <input
+                      type="text"
+                      value={onlineGitBranch}
+                      onChange={(e) => setOnlineGitBranch(e.target.value)}
+                      placeholder="branch"
+                      title="Branch (default: main)"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        backgroundColor: '#0a101d',
+                        border: '1px solid #1e293b',
+                        color: '#a5f3fc',
+                        fontSize: 12,
+                        outline: 'none',
+                        fontFamily: 'monospace',
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isImportingGitUrl || !onlineGitUrl.trim()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      backgroundColor: '#0284c7',
+                      border: '1px solid #38bdf8',
+                      color: '#ffffff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: isImportingGitUrl ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 0 14px rgba(56, 189, 248, 0.25)',
+                    }}
+                  >
+                    {isImportingGitUrl ? (
+                      <>
+                        <RefreshCw size={13} className="spin" />
+                        <span>Scanning & Importing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Layers size={13} />
+                        <span>Import Git Link</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Quick Presets / Examples */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>Quick Examples:</span>
+                  {[
+                    { label: 'Online Boutique (11 services)', url: 'https://github.com/GoogleCloudPlatform/microservices-demo' },
+                    { label: 'ShopSphere Core', url: 'shop-sphere/ecommerce-core' },
+                    { label: 'Fintech Nexus Ledger', url: 'fintech-nexus/ledger-core' },
+                    { label: 'AEGIS System', url: 'https://github.com/muneeb-sawez/aegis' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.url}
+                      type="button"
+                      onClick={() => {
+                        setOnlineGitUrl(preset.url);
+                        handleImportOnlineGitUrl(undefined, preset.url);
+                      }}
+                      style={{
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        borderRadius: 4,
+                        padding: '2px 8px',
+                        color: '#38bdf8',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Repository Search & Filter */}
+              <div style={{ padding: '16px 20px' }}>
+                <div style={{ position: 'relative', marginBottom: 14 }}>
+                  <Search size={14} color="#64748b" style={{ position: 'absolute', left: 12, top: 11 }} />
+                  <input
+                    type="text"
+                    value={repoSearchQuery}
+                    onChange={(e) => setRepoSearchQuery(e.target.value)}
+                    placeholder="Search repositories by name or owner..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 34px',
+                      borderRadius: 6,
+                      backgroundColor: '#070b14',
+                      border: '1px solid #1e293b',
+                      color: '#f8fafc',
+                      fontSize: 12,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Repository Cards Grid */}
+                {isReposLoading ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+                    <RefreshCw size={18} className="spin" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+                    Scanning repositories from GitHub...
+                  </div>
+                ) : gitHubRepos.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: 12 }}>
+                    No repositories found. Click 'Refresh Repos' or verify GitHub account permissions.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 12 }}>
+                    {gitHubRepos
+                      .filter((r) =>
+                        r.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+                        (r.description && r.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+                      )
+                      .map((repo) => {
+                        const isCurrentLinked = currentProject?.repo_full_name?.toLowerCase() === repo.full_name.toLowerCase();
+                        const isImporting = importingRepoName === repo.full_name;
+
+                        return (
+                          <div
+                            key={repo.id}
+                            style={{
+                              padding: '14px 16px',
+                              borderRadius: 6,
+                              backgroundColor: isCurrentLinked ? 'rgba(56, 189, 248, 0.05)' : '#070b14',
+                              border: isCurrentLinked ? '1.5px solid rgba(56, 189, 248, 0.4)' : '1px solid #1e293b',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                            }}
+                          >
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                  <GitHubIcon size={16} color={isCurrentLinked ? '#38bdf8' : '#94a3b8'} />
+                                  <span
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 800,
+                                      color: isCurrentLinked ? '#38bdf8' : '#f8fafc',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                    title={repo.full_name}
+                                  >
+                                    {repo.full_name}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                  {repo.private ? (
+                                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
+                                      Private
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, backgroundColor: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
+                                      Public
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, backgroundColor: '#0f172a', color: '#64748b' }}>
+                                    {repo.default_branch || 'main'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <p
+                                style={{
+                                  fontSize: 11,
+                                  color: '#94a3b8',
+                                  margin: '8px 0 0 0',
+                                  lineHeight: 1.4,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {repo.description || 'No description provided.'}
+                              </p>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #131c2e' }}>
+                              <a
+                                href={repo.html_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: '#64748b', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                              >
+                                <span>View Repo</span>
+                                <ExternalLink size={11} />
+                              </a>
+
+                              <button
+                                onClick={() => handleImportGitHubRepo(repo)}
+                                disabled={isImporting}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '6px 12px',
+                                  borderRadius: 4,
+                                  backgroundColor: isCurrentLinked ? '#0f172a' : '#0284c7',
+                                  border: isCurrentLinked ? '1px solid #38bdf8' : '1px solid #38bdf8',
+                                  color: isCurrentLinked ? '#38bdf8' : '#ffffff',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: isImporting ? 'wait' : 'pointer',
+                                }}
+                              >
+                                {isImporting ? (
+                                  <>
+                                    <RefreshCw size={11} className="spin" />
+                                    <span>Importing...</span>
+                                  </>
+                                ) : isCurrentLinked ? (
+                                  <>
+                                    <RefreshCw size={11} />
+                                    <span>Re-Build Graph</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Layers size={11} />
+                                    <span>Import & Build Graph</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </div>
+            </>
           ) : (
             /* Unconnected State: Welcome and Connect Options */
             <div
@@ -1664,7 +2236,200 @@ export function ProjectsPage({ onNavigate }: ProjectsPageProps) {
                   <span>GitHub OAuth App</span>
                 </button>
               </div>
+
+              {/* Direct Online Git Link (No Login Required) */}
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1e293b', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Globe size={15} color="#38bdf8" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                      Or Import from Online Git Link Directly (No Login Required)
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                    Scan any public GitHub repo URL
+                  </span>
+                </div>
+
+                <form onSubmit={handleImportOnlineGitUrl} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Globe size={14} color="#64748b" style={{ position: 'absolute', left: 12, top: 11 }} />
+                    <input
+                      type="text"
+                      value={onlineGitUrl}
+                      onChange={(e) => setOnlineGitUrl(e.target.value)}
+                      placeholder="e.g. https://github.com/GoogleCloudPlatform/microservices-demo or owner/repo"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 34px',
+                        borderRadius: 6,
+                        backgroundColor: '#070b14',
+                        border: '1px solid #1e293b',
+                        color: '#f8fafc',
+                        fontSize: 12,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ width: 100 }}>
+                    <input
+                      type="text"
+                      value={onlineGitBranch}
+                      onChange={(e) => setOnlineGitBranch(e.target.value)}
+                      placeholder="main"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        backgroundColor: '#070b14',
+                        border: '1px solid #1e293b',
+                        color: '#a5f3fc',
+                        fontSize: 12,
+                        outline: 'none',
+                        fontFamily: 'monospace',
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isImportingGitUrl || !onlineGitUrl.trim()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      backgroundColor: '#0284c7',
+                      border: '1px solid #38bdf8',
+                      color: '#ffffff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: isImportingGitUrl ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {isImportingGitUrl ? (
+                      <>
+                        <RefreshCw size={13} className="spin" />
+                        <span>Importing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Layers size={13} />
+                        <span>Import Git Link</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Quick Presets / Examples */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>Quick Examples:</span>
+                  {[
+                    { label: 'Online Boutique', url: 'https://github.com/GoogleCloudPlatform/microservices-demo' },
+                    { label: 'ShopSphere Core', url: 'shop-sphere/ecommerce-core' },
+                    { label: 'Fintech Nexus Ledger', url: 'fintech-nexus/ledger-core' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.url}
+                      type="button"
+                      onClick={() => {
+                        setOnlineGitUrl(preset.url);
+                        handleImportOnlineGitUrl(undefined, preset.url);
+                      }}
+                      style={{
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        borderRadius: 4,
+                        padding: '2px 8px',
+                        color: '#38bdf8',
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Import Status Feedback for Online Git Links */}
+                {importResult && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '12px 16px',
+                      borderRadius: 6,
+                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#34d399',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CheckCircle size={16} />
+                      <div>
+                        <div style={{ fontWeight: 700 }}>
+                          {importResult.message}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#a7f3d0' }}>
+                          Discovered {importResult.nodes_added} services ({importResult.services_discovered?.slice(0, 5).join(', ')}{importResult.services_discovered?.length > 5 ? '...' : ''}), {importResult.edges_added} dependency edges.
+                        </div>
+                      </div>
+                    </div>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('topology')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 12px',
+                          borderRadius: 4,
+                          backgroundColor: '#059669',
+                          border: 'none',
+                          color: '#ffffff',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>View Topology Canvas</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {importError && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '12px 16px',
+                      borderRadius: 6,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#f87171',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <AlertTriangle size={16} />
+                    <span>{importError}</span>
+                  </div>
+                )}
+              </div>
             </div>
+
           )}
 
           {/* Linked Projects Multi-Tenant Matrix */}
