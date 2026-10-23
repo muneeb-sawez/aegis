@@ -55,6 +55,17 @@ class NetworkXGraphRepository(GraphRepository):
 
     def seed_project(self, project_id: str = "demo", data: Optional[dict[str, Any]] = None) -> None:
         """Seed a project's isolated graph from data (or baseline topology)."""
+        if data is None and project_id != "demo":
+            import json
+            from pathlib import Path
+            graph_file = Path("data") / "graphs" / f"{project_id}.json"
+            if graph_file.exists():
+                try:
+                    with open(graph_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    data = None
+
         if data is None:
             if self._initial_data is None:
                 self._initial_data = load_topology_yaml(self.topology_path) if self.topology_path else load_topology_yaml()

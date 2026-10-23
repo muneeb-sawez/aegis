@@ -1,0 +1,458 @@
+{
+  "nodes": [
+    {
+      "id": "rabbitmq",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "rabbitmq",
+        "image": "rabbitmq:3-management",
+        "ports": [
+          "15672:15672"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "config",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "config",
+        "image": "sqshq/piggymetrics-config",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "registry",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "registry",
+        "image": "sqshq/piggymetrics-registry",
+        "ports": [
+          "8761:8761"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "gateway",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "gateway",
+        "image": "sqshq/piggymetrics-gateway",
+        "ports": [
+          "80:4000"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "auth-service",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "auth-service",
+        "image": "sqshq/piggymetrics-auth-service",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "auth-mongodb",
+      "label": "Database",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "auth-mongodb",
+        "image": "sqshq/piggymetrics-mongodb",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "account-service",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "account-service",
+        "image": "sqshq/piggymetrics-account-service",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "account-mongodb",
+      "label": "Database",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "account-mongodb",
+        "image": "sqshq/piggymetrics-mongodb",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "statistics-service",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "statistics-service",
+        "image": "sqshq/piggymetrics-statistics-service",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "statistics-mongodb",
+      "label": "Database",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "statistics-mongodb",
+        "image": "sqshq/piggymetrics-mongodb",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "notification-service",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "notification-service",
+        "image": "sqshq/piggymetrics-notification-service",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "notification-mongodb",
+      "label": "Database",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "notification-mongodb",
+        "image": "sqshq/piggymetrics-mongodb",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "monitoring",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "monitoring",
+        "image": "sqshq/piggymetrics-monitoring",
+        "ports": [
+          "9000:8080"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "turbine-stream-service",
+      "label": "Service",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "name": "turbine-stream-service",
+        "image": "sqshq/piggymetrics-turbine-stream-service",
+        "ports": [
+          "8989:8989"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "registry",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "gateway",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "gateway",
+      "target": "auth-service",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "HTTP/REST",
+        "inferred_route": "/api/auth-service"
+      }
+    },
+    {
+      "source": "gateway",
+      "target": "account-service",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "HTTP/REST",
+        "inferred_route": "/api/account-service"
+      }
+    },
+    {
+      "source": "gateway",
+      "target": "statistics-service",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "HTTP/REST",
+        "inferred_route": "/api/statistics-service"
+      }
+    },
+    {
+      "source": "gateway",
+      "target": "notification-service",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "HTTP/REST",
+        "inferred_route": "/api/notification-service"
+      }
+    },
+    {
+      "source": "auth-service",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "auth-service",
+      "target": "auth-mongodb",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "Database Driver",
+        "relationship": "datastore",
+        "inferred_by": "naming_convention"
+      }
+    },
+    {
+      "source": "auth-service",
+      "target": "rabbitmq",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "AMQP/Kafka",
+        "relationship": "event_broker",
+        "inferred_by": "event_bus_pattern"
+      }
+    },
+    {
+      "source": "account-service",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "account-service",
+      "target": "account-mongodb",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "Database Driver",
+        "relationship": "datastore",
+        "inferred_by": "naming_convention"
+      }
+    },
+    {
+      "source": "account-service",
+      "target": "rabbitmq",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "AMQP/Kafka",
+        "relationship": "event_broker",
+        "inferred_by": "event_bus_pattern"
+      }
+    },
+    {
+      "source": "statistics-service",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "statistics-service",
+      "target": "statistics-mongodb",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "Database Driver",
+        "relationship": "datastore",
+        "inferred_by": "naming_convention"
+      }
+    },
+    {
+      "source": "statistics-service",
+      "target": "rabbitmq",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "AMQP/Kafka",
+        "relationship": "event_broker",
+        "inferred_by": "event_bus_pattern"
+      }
+    },
+    {
+      "source": "notification-service",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "notification-service",
+      "target": "notification-mongodb",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "Database Driver",
+        "relationship": "datastore",
+        "inferred_by": "naming_convention"
+      }
+    },
+    {
+      "source": "notification-service",
+      "target": "rabbitmq",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "AMQP/Kafka",
+        "relationship": "event_broker",
+        "inferred_by": "event_bus_pattern"
+      }
+    },
+    {
+      "source": "monitoring",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "monitoring",
+      "target": "turbine-stream-service",
+      "type": "CALLS",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "inferred",
+        "protocol": "Stream/HTTP",
+        "relationship": "telemetry_stream",
+        "inferred_by": "observability_pattern"
+      }
+    },
+    {
+      "source": "turbine-stream-service",
+      "target": "config",
+      "type": "DEPENDS_ON",
+      "project_id": "piggymetrics",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    }
+  ]
+}

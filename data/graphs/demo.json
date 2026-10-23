@@ -1,0 +1,73 @@
+{
+  "nodes": [
+    {
+      "id": "web",
+      "label": "Service",
+      "project_id": "demo",
+      "properties": {
+        "provenance": "manifest",
+        "name": "web",
+        "image": "nginx:latest",
+        "ports": [
+          "80:80"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "api",
+      "label": "Service",
+      "project_id": "demo",
+      "properties": {
+        "provenance": "manifest",
+        "name": "api",
+        "image": "custom-api:v1",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "postgres-db",
+      "label": "Database",
+      "project_id": "demo",
+      "properties": {
+        "provenance": "manifest",
+        "name": "postgres-db",
+        "image": "postgres:15-alpine",
+        "ports": [],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "web",
+      "target": "api",
+      "type": "DEPENDS_ON",
+      "project_id": "demo",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "api",
+      "target": "postgres-db",
+      "type": "DEPENDS_ON",
+      "project_id": "demo",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    }
+  ]
+}

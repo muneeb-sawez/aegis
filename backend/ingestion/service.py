@@ -84,6 +84,44 @@ def merge_ingested_elements(
             }
             G.add_edge(e.source, e.target, type=e.type, provenance=e.provenance, project_id=project_id, **e_props)
 
+    # Persist project graph to disk for multi-tenant persistence across sessions
+    try:
+        import json
+        from pathlib import Path
+        graph_dir = Path("data") / "graphs"
+        graph_dir.mkdir(parents=True, exist_ok=True)
+        graph_file = graph_dir / f"{project_id}.json"
+
+        nodes_list = []
+        for nid, attrs in G.nodes(data=True):
+            n_attrs = dict(attrs)
+            n_label = n_attrs.pop("label", "Service")
+            n_attrs.pop("project_id", None)
+            nodes_list.append({
+                "id": nid,
+                "label": n_label,
+                "project_id": project_id,
+                "properties": n_attrs,
+            })
+
+        edges_list = []
+        for u, v, attrs in G.edges(data=True):
+            e_attrs = dict(attrs)
+            e_type = e_attrs.pop("type", "CALLS")
+            e_attrs.pop("project_id", None)
+            edges_list.append({
+                "source": u,
+                "target": v,
+                "type": e_type,
+                "project_id": project_id,
+                "properties": e_attrs,
+            })
+
+        with open(graph_file, "w", encoding="utf-8") as f:
+            json.dump({"nodes": nodes_list, "edges": edges_list}, f, indent=2)
+    except Exception as persist_err:
+        logger.debug("Project graph disk persistence notice: %s", persist_err)
+
     return nodes_added, nodes_updated, edges_added
 
 
@@ -92,6 +130,8 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
     source_desc = "Direct YAML"
     yaml_content = req.compose_yaml_content
     raw_repo_url = req.repo_url or req.repository_url
+    owner: str | None = None
+    repo_name: str | None = None
 
     if not yaml_content and raw_repo_url:
         clean_url = raw_repo_url.strip().lower()
@@ -132,7 +172,8 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
     if not yaml_content:
         raise ValueError("Either 'repo_url' or 'compose_yaml_content' must be provided.")
 
-    parsed_nodes, parsed_edges = parse_docker_compose(yaml_content)
+    effective_app_name = repo_name or req.project_id
+    parsed_nodes, parsed_edges = parse_docker_compose(yaml_content, app_name=effective_app_name)
     replace_graph = req.mode == "replace"
     nodes_added, nodes_updated, edges_added = merge_ingested_elements(
         parsed_nodes, parsed_edges, replace=replace_graph, project_id=req.project_id

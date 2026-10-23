@@ -108,7 +108,7 @@ async def exchange_github_oauth_code(code: str) -> str:
 def build_github_oauth_url(project_id: str, state: Optional[str] = None) -> str:
     """Construct the browser redirect URL to initiate GitHub OAuth flow."""
     client_id = settings.GITHUB_CLIENT_ID or "placeholder_client_id"
-    redirect_uri = settings.GITHUB_REDIRECT_URI or "http://localhost:5173/#projects"
+    redirect_uri = settings.GITHUB_REDIRECT_URI or "http://localhost:5173/"
     
     state_payload = state or f"project:{project_id}"
     params = {
