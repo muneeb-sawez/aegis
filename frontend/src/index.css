@@ -155,3 +155,47 @@ body, html, #root {
 .react-flow__minimap-node {
   fill: #1e293b !important;
 }
+
+/* Visual Loaders & Shimmer Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes radar-pulse {
+  0%, 100% {
+    transform: scale(0.96);
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 2.5s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 2s linear infinite;
+}
+
+.animate-radar {
+  animation: radar-pulse 2.2s ease-in-out infinite;
+}
+
