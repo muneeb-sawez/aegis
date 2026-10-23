@@ -12,8 +12,6 @@ import {
   Flame,
   ArrowRight,
   Loader2,
-  Activity,
-  Cpu,
 } from 'lucide-react';
 import { getActiveProjectId, apiUrl } from '../config';
 
