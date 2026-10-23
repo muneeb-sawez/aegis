@@ -28,3 +28,7 @@ data/github_auth.json
 .agent/
 AGENTS.md
 docs/knowledge-base/
+
+# Termwork reports & submission drafts (local only, do not push)
+AEGIS_TERMWORK_REPORT.md
+*_TERMWORK_REPORT.md
