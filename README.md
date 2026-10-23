@@ -71,6 +71,17 @@ npm run dev
 
 ---
 
+### Step 4: Run Target System & Real-Time Live Node Beats
+To enable real-time health monitoring and watch **live node beats (moving traffic particle dots flowing between microservices)**:
+```powershell
+# Terminal 3 — Live Target Microservices
+python scripts/run_petclinic_live.py
+```
+> [!TIP]
+> For automated AI agents and developer instructions on cloning and orchestrating the target repository, see **[`docs/AI_AGENT_TARGET_REPO_GUIDE.md`](docs/AI_AGENT_TARGET_REPO_GUIDE.md)**. Target repository: [`https://github.com/FawazMulla/spring-petclinic-microservices/`](https://github.com/FawazMulla/spring-petclinic-microservices/).
+
+---
+
 ### 🛠️ Common Troubleshooting
 
 | Error / Symptom | Cause | Solution |

@@ -85,10 +85,21 @@ async def monitor_events_sse(request: Request, max_events: Optional[int] = None)
 
 
 @router.get("/status", response_model=list[ServiceHealthRecord])
-def get_monitor_status() -> list[ServiceHealthRecord]:
-    """Return current monitored health records across all services."""
+def get_monitor_status(project_id: Optional[str] = None) -> list[ServiceHealthRecord]:
+    """Return current monitored health records across all services (optionally scoped to project)."""
     checker = get_health_checker()
-    return checker.get_all_health_states()
+    states = checker.get_all_health_states()
+    if not project_id:
+        return states
+    try:
+        from backend.graph import get_repository
+        repo = get_repository()
+        topo = repo.get_topology(project_id=project_id)
+        proj_nodes = {n.id for n in topo.nodes}
+        # Also include any known aliases or suffixes
+        return [s for s in states if s.service_id in proj_nodes or any(p in s.service_id for p in proj_nodes)]
+    except Exception:
+        return states
 
 
 @router.post("/check-now", response_model=list[ServiceHealthRecord])

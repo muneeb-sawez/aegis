@@ -26,9 +26,41 @@ export interface NodeData {
   rolling_latencies?: number[];
   error_rate?: number;
   raw?: any;
+  isBlastTarget?: boolean;
+  isBlastImpacted?: boolean;
+  blastVerdict?: string;
+  blastRisk?: number;
+  blastHops?: number;
 }
 
-function getStatusTheme(healthStatus?: string, fallbackCritical = false) {
+function getStatusTheme(healthStatus?: string, fallbackCritical = false, blastData?: NodeData) {
+  // Blast Radius Overrides (highest visual priority when simulating changes or evaluating PRs)
+  if (blastData?.isBlastTarget) {
+    return {
+      border: '2px solid #ef4444',
+      boxShadow: '0 0 32px rgba(239, 68, 68, 0.95), inset 0 0 14px rgba(239, 68, 68, 0.45)',
+      badgeBg: 'rgba(239, 68, 68, 0.35)',
+      badgeBorder: '1.5px solid #ef4444',
+      badgeColor: '#fca5a5',
+      badgeText: blastData.blastVerdict ? `🎯 TARGET (${blastData.blastVerdict.toUpperCase()})` : '🎯 PR TARGET (BREAKING)',
+      dotColor: '#ef4444',
+      alert: true,
+    };
+  }
+
+  if (blastData?.isBlastImpacted) {
+    return {
+      border: '2px solid #f43f5e',
+      boxShadow: '0 0 26px rgba(244, 63, 94, 0.85), inset 0 0 10px rgba(244, 63, 94, 0.3)',
+      badgeBg: 'rgba(244, 63, 94, 0.28)',
+      badgeBorder: '1.5px solid #f43f5e',
+      badgeColor: '#fda4af',
+      badgeText: '💥 BLAST CALLER (HOP 1)',
+      dotColor: '#f43f5e',
+      alert: true,
+    };
+  }
+
   if (healthStatus === 'healthy') {
     return {
       border: '1.5px solid #10b981',
@@ -92,7 +124,7 @@ function getStatusTheme(healthStatus?: string, fallbackCritical = false) {
 
 // 1. Critical Highlighted Service/DB Node (Orange / Status Glow)
 export const CriticalNode = memo(({ data }: { data: NodeData }) => {
-  const theme = getStatusTheme(data.healthStatus, true);
+  const theme = getStatusTheme(data.healthStatus, true, data);
   const showAlert = data.alertBadge || theme.alert;
 
   return (
@@ -195,7 +227,7 @@ export const CriticalNode = memo(({ data }: { data: NodeData }) => {
 
 // 2. Standard Service / Database Node (Dynamic Status Glow: Green/Amber/Red)
 export const ServiceNode = memo(({ data }: { data: NodeData }) => {
-  const theme = getStatusTheme(data.healthStatus, false);
+  const theme = getStatusTheme(data.healthStatus, false, data);
   const showAlert = data.alertBadge || theme.alert;
 
   return (

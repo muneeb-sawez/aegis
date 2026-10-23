@@ -194,21 +194,63 @@ class HealthChecker:
         """Synchronize active services from graph repository."""
         try:
             repo = get_repository()
-            topo = repo.get_topology()
-            for node in topo.nodes:
-                if node.label in ("Service", "ExternalService") and node.id not in self._health_state:
-                    self._health_state[node.id] = ServiceHealthRecord(
-                        service_id=node.id,
-                        endpoint_url=self._monitored_services.get(node.id),
-                        status="unconfigured",
-                        data_source="unconfigured",
-                        failure_threshold=self.failure_threshold,
-                        error_message="No health check endpoint configured.",
-                    )
-                    self._rolling_probes[node.id] = deque(maxlen=20)
-                    self._healthy_baseline_samples[node.id] = []
-        except Exception:
-            pass
+            # Sync default demo project plus all projects from project store
+            from backend.auth.store import get_project_store
+            pids = ["demo"]
+            try:
+                pstore = get_project_store()
+                pids.extend([p.project_id for p in pstore.list_projects()])
+            except Exception:
+                pass
+
+            for pid in set(pids):
+                try:
+                    topo = repo.get_topology(project_id=pid)
+                    for node in topo.nodes:
+                        if node.label in ("Service", "ExternalService") and node.id not in self._health_state:
+                            self._health_state[node.id] = ServiceHealthRecord(
+                                service_id=node.id,
+                                endpoint_url=self._monitored_services.get(node.id),
+                                status="unconfigured",
+                                data_source="unconfigured",
+                                failure_threshold=self.failure_threshold,
+                                error_message="No health check endpoint configured.",
+                            )
+                            self._rolling_probes[node.id] = deque(maxlen=20)
+                            self._healthy_baseline_samples[node.id] = []
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug(f"Error syncing graph services: {e}")
+
+    def sync_registry_endpoints(self):
+        """Sync endpoint URLs from EndpointRegistry."""
+        try:
+            from backend.security.endpoints import get_endpoint_registry
+            registry = get_endpoint_registry()
+            all_endpoints = registry.load_all()
+            for pid, svcs in all_endpoints.items():
+                for sname, rec in svcs.items():
+                    if rec.health_url:
+                        self._monitored_services[sname] = rec.health_url
+                        if sname in self._health_state:
+                            self._health_state[sname].endpoint_url = rec.health_url
+                            if self._health_state[sname].status == "unconfigured":
+                                self._health_state[sname].status = "pending"
+                                self._health_state[sname].data_source = "observed"
+                                self._health_state[sname].error_message = None
+                        else:
+                            self._health_state[sname] = ServiceHealthRecord(
+                                service_id=sname,
+                                endpoint_url=rec.health_url,
+                                status="pending",
+                                data_source="observed",
+                                failure_threshold=self.failure_threshold,
+                            )
+                            self._rolling_probes[sname] = deque(maxlen=20)
+                            self._healthy_baseline_samples[sname] = []
+        except Exception as e:
+            logger.debug(f"Error syncing registry endpoints: {e}")
 
     def get_baseline_latency(self, service_id: str) -> Optional[float]:
         return self._baseline_latencies.get(service_id)
@@ -511,6 +553,7 @@ class HealthChecker:
             return
         self._running = True
         self.interval_sec = interval_sec or settings.MONITOR_INTERVAL_SEC
+        self.sync_registry_endpoints()
 
         async def _loop():
             try:

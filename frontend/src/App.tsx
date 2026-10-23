@@ -559,7 +559,7 @@ export function App() {
             />
           )}
           {activePage === 'topology' && <TopologyPage onNavigate={handleNavigate} />}
-          {activePage === 'predict' && <PredictPage />}
+          {activePage === 'predict' && <PredictPage onNavigate={handleNavigate} />}
           {activePage === 'monitor' && <MonitorPage />}
           {activePage === 'chaos' && <ChaosPage onNavigate={handleNavigate} initialService={selectedServiceContext} />}
           {activePage === 'actuator' && <ActuatorPage onNavigate={handleNavigate} />}

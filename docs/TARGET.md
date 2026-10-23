@@ -1,6 +1,9 @@
 # AEGIS Target Integration Guide
 
-This document describes how to run the separate **`aegis-target`** microservice system, ingest its topology into AEGIS via `docker-compose.yml`, and register its live health endpoints for real-time monitoring, fault injection, and automated healing.
+> [!IMPORTANT]
+> **Primary Target System**: For AI agents and developers working with the target microservice architecture **[`spring-petclinic-microservices`](https://github.com/FawazMulla/spring-petclinic-microservices/)**, please consult **[`docs/AI_AGENT_TARGET_REPO_GUIDE.md`](AI_AGENT_TARGET_REPO_GUIDE.md)** for cloning, running, and live node beat visualization instructions.
+
+This document describes how to run target microservice systems, ingest topologies into AEGIS, and register live health endpoints for real-time monitoring, fault injection, and automated healing.
 
 ---
 

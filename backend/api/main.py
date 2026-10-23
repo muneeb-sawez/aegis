@@ -26,6 +26,7 @@ from backend.api.routes_endpoints import router as endpoints_router
 from backend.api.routes_webhooks import router as webhooks_router
 from backend.api.routes_github_auth import router as github_auth_router
 from backend.api.routes_sim import router as sim_router
+from backend.api.routes_graph_chat import router as graph_chat_router
 
 from contextlib import asynccontextmanager
 
@@ -72,6 +73,7 @@ app.include_router(projects_router)
 app.include_router(endpoints_router)
 app.include_router(webhooks_router)
 app.include_router(github_auth_router)
+app.include_router(graph_chat_router)
 
 
 from fastapi import FastAPI, Request

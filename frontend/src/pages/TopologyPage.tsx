@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Flame,
   KeyRound,
+  Sparkles,
 } from 'lucide-react';
 import {
   CriticalNode,
@@ -26,7 +27,9 @@ import {
   VpcGroupNode,
   IamRoleNode,
 } from '../components/CustomNodes';
+import { LiveBeatEdge } from '../components/LiveBeatEdge';
 import { LatencySparkline } from '../components/LatencySparkline';
+import { GraphChatDrawer } from '../components/GraphChatDrawer';
 import {
   getActiveProjectId,
   setActiveProjectId,
@@ -39,6 +42,66 @@ const nodeTypes = {
   serviceNode: ServiceNode,
   vpcGroupNode: VpcGroupNode,
   iamRoleNode: IamRoleNode,
+};
+
+const edgeTypes = {
+  liveBeatEdge: LiveBeatEdge,
+};
+
+const knownMap: Record<string, { x: number; y: number; type?: string }> = {
+  // Online Boutique / Core Demo Topology
+  'internet': { x: 440, y: 30, type: 'serviceNode' },
+  'route53': { x: 250, y: 90, type: 'serviceNode' },
+  'waf': { x: 630, y: 90, type: 'serviceNode' },
+  'prod-db': { x: 170, y: 200, type: 'criticalNode' },
+  'checkoutservice': { x: 580, y: 210, type: 'criticalNode' },
+  'db-replica-1': { x: 180, y: 360, type: 'serviceNode' },
+  'db-replica-2': { x: 300, y: 360, type: 'serviceNode' },
+  'cartservice': { x: 480, y: 330, type: 'serviceNode' },
+  'paymentservice': { x: 620, y: 340, type: 'criticalNode' },
+  'shippingservice': { x: 760, y: 330, type: 'serviceNode' },
+  'stripe-gateway': { x: 740, y: 440, type: 'serviceNode' },
+  'prod-vpc': { x: 450, y: 440, type: 'vpcGroupNode' },
+  'app-role': { x: 340, y: 550, type: 'iamRoleNode' },
+  'deploy-role': { x: 500, y: 550, type: 'iamRoleNode' },
+  'dba-role': { x: 660, y: 550, type: 'iamRoleNode' },
+
+  // Spring Petclinic Java Microservices Architecture Layout
+  'api-gateway': { x: 420, y: 50, type: 'criticalNode' },
+  'customers-service': { x: 180, y: 220, type: 'criticalNode' },
+  'visits-service': { x: 420, y: 220, type: 'criticalNode' },
+  'vets-service': { x: 660, y: 220, type: 'criticalNode' },
+  'genai-service': { x: 900, y: 220, type: 'serviceNode' },
+  'mysql-customers': { x: 180, y: 410, type: 'serviceNode' },
+  'mysql-visits': { x: 420, y: 410, type: 'serviceNode' },
+  'mysql-vets': { x: 660, y: 410, type: 'serviceNode' },
+  'config-server': { x: 180, y: 50, type: 'serviceNode' },
+  'discovery-server': { x: 660, y: 50, type: 'serviceNode' },
+  'admin-server': { x: 900, y: 50, type: 'serviceNode' },
+  'tracing-server': { x: 900, y: 410, type: 'serviceNode' },
+  'prometheus-server': { x: 1080, y: 140, type: 'serviceNode' },
+  'grafana-server': { x: 1080, y: 280, type: 'serviceNode' },
+};
+
+interface BlastContext {
+  target_service: string;
+  upstream_callers: string[];
+  risk_score?: number;
+  verdict?: string;
+  pr_number?: number;
+  pr_title?: string;
+  breaking_changes?: string[];
+  timestamp?: number;
+}
+
+const getStoredBlastContext = (): BlastContext | null => {
+  try {
+    const raw = localStorage.getItem('aegis_blast_context');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 };
 
 interface TopologyPageProps {
@@ -59,8 +122,10 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
   const [lastEventTime, setLastEventTime] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectIdState] = useState<string>(getActiveProjectId());
   const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [blastContext, setBlastContext] = useState<BlastContext | null>(getStoredBlastContext);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const loadTopology = useCallback(async (targetPid?: string) => {
+  const loadTopology = useCallback(async (targetPid?: string, overrideBlast?: BlastContext | null) => {
     const pid = targetPid || activeProjectId;
     setIsLoading(true);
     try {
@@ -90,40 +155,18 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           // ignore monitor status fetch error on boot
         }
 
-        const knownMap: Record<string, { x: number; y: number; type?: string }> = {
-          // Online Boutique / Core Demo Topology
-          'internet': { x: 440, y: 30, type: 'serviceNode' },
-          'route53': { x: 250, y: 90, type: 'serviceNode' },
-          'waf': { x: 630, y: 90, type: 'serviceNode' },
-          'prod-db': { x: 170, y: 200, type: 'criticalNode' },
-          'checkoutservice': { x: 580, y: 210, type: 'criticalNode' },
-          'db-replica-1': { x: 180, y: 360, type: 'serviceNode' },
-          'db-replica-2': { x: 300, y: 360, type: 'serviceNode' },
-          'cartservice': { x: 480, y: 330, type: 'serviceNode' },
-          'paymentservice': { x: 620, y: 340, type: 'criticalNode' },
-          'shippingservice': { x: 760, y: 330, type: 'serviceNode' },
-          'stripe-gateway': { x: 740, y: 440, type: 'serviceNode' },
-          'prod-vpc': { x: 450, y: 440, type: 'vpcGroupNode' },
-          'app-role': { x: 340, y: 550, type: 'iamRoleNode' },
-          'deploy-role': { x: 500, y: 550, type: 'iamRoleNode' },
-          'dba-role': { x: 660, y: 550, type: 'iamRoleNode' },
+        const currentBlast = overrideBlast !== undefined ? overrideBlast : getStoredBlastContext();
+        const blastTarget = (
+          currentBlast?.target_service ||
+          (currentBlast as any)?.target ||
+          (currentBlast as any)?.service_id ||
+          ''
+        ).toLowerCase();
 
-          // Spring Petclinic Java Microservices Architecture Layout
-          'api-gateway': { x: 420, y: 50, type: 'criticalNode' },
-          'customers-service': { x: 180, y: 220, type: 'criticalNode' },
-          'visits-service': { x: 420, y: 220, type: 'criticalNode' },
-          'vets-service': { x: 660, y: 220, type: 'criticalNode' },
-          'genai-service': { x: 900, y: 220, type: 'serviceNode' },
-          'mysql-customers': { x: 180, y: 410, type: 'serviceNode' },
-          'mysql-visits': { x: 420, y: 410, type: 'serviceNode' },
-          'mysql-vets': { x: 660, y: 410, type: 'serviceNode' },
-          'config-server': { x: 180, y: 50, type: 'serviceNode' },
-          'discovery-server': { x: 660, y: 50, type: 'serviceNode' },
-          'admin-server': { x: 900, y: 50, type: 'serviceNode' },
-          'tracing-server': { x: 900, y: 410, type: 'serviceNode' },
-          'prometheus-server': { x: 1080, y: 140, type: 'serviceNode' },
-          'grafana-server': { x: 1080, y: 280, type: 'serviceNode' },
-        };
+        const rawBlastCallers = currentBlast?.upstream_callers || (currentBlast as any)?.callers || [];
+        const blastCallers: string[] = Array.isArray(rawBlastCallers)
+          ? rawBlastCallers.map((c: any) => String(c).toLowerCase())
+          : [];
 
         const cols = Math.min(5, Math.max(3, Math.ceil(Math.sqrt(topoNodes.length))));
 
@@ -147,9 +190,26 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           const isExternal = n.label === 'ExternalService' || n.id.startsWith('ext-');
           const isDb = n.label === 'Database' || n.id.includes('mysql') || n.id.includes('postgres') || n.id.includes('redis');
 
-          const badge = isCritical ? 'CRITICAL' : isExternal ? 'EXTERNAL' : isDb ? 'DATABASE' : undefined;
-          const iconType = isDb ? 'db' : (isExternal || n.id.includes('gateway')) ? 'gateway' : 'service';
+          const isBlastTarget = Boolean(blastTarget && n.id.toLowerCase() === blastTarget);
+          const isBlastImpacted = Boolean(blastCallers.includes(n.id.toLowerCase()));
 
+          if (isBlastTarget || isBlastImpacted) {
+            nodeType = 'criticalNode';
+          }
+
+          const badge = isBlastTarget
+            ? `🎯 TARGET (${(currentBlast?.verdict || 'BLOCKED').toUpperCase()})`
+            : isBlastImpacted
+            ? '💥 BLAST CALLER (HOP 1)'
+            : isCritical
+            ? 'CRITICAL'
+            : isExternal
+            ? 'EXTERNAL'
+            : isDb
+            ? 'DATABASE'
+            : undefined;
+
+          const iconType = isDb ? 'db' : (isExternal || n.id.includes('gateway')) ? 'gateway' : 'service';
           const healthRec = healthMap.get(n.id);
 
           return {
@@ -159,35 +219,95 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             data: {
               raw: n,
               label: n.id,
-              sublabel: n.properties?.name || n.properties?.technology || n.label || 'Service',
+              sublabel: isBlastTarget
+                ? 'Target Service (Risk Floor)'
+                : isBlastImpacted
+                ? 'Upstream Blast Impact'
+                : (n.properties?.name || n.properties?.technology || n.label || 'Service'),
               iconType,
-              status: isCritical ? 'critical' : 'normal',
+              status: isBlastTarget || isCritical ? 'critical' : 'normal',
               badge,
               subnets: isExternal ? ['Public Internet / SaaS'] : ['Private Subnet 10.0.1.0/24', 'Public Subnet 10.0.2.0/24'],
-              healthStatus: healthRec ? healthRec.status : (isCritical ? 'healthy' : undefined),
+              healthStatus: isBlastTarget
+                ? 'unavailable'
+                : isBlastImpacted
+                ? 'degraded'
+                : healthRec ? healthRec.status : (isCritical ? 'healthy' : undefined),
+              isBlastTarget,
+              isBlastImpacted,
+              blastVerdict: currentBlast?.verdict || 'Blocked',
+              blastRisk: currentBlast?.risk_score,
+              blastReason: isBlastTarget
+                ? (currentBlast?.breaking_changes && currentBlast.breaking_changes.length > 0
+                    ? `🚨 Breaking Contract Diff: ${currentBlast.breaking_changes.join('; ')}. Upstream callers will fail deserialization.`
+                    : `🚨 Breaking API schema contract change detected in PR #${currentBlast?.pr_number || '3'}.`)
+                : isBlastImpacted
+                ? `⚠️ Upstream caller directly calling '${blastTarget}'. Will fail at runtime due to breaking contract diff in PR #${currentBlast?.pr_number || '3'}.`
+                : undefined,
+              blastPrNumber: currentBlast?.pr_number,
+              blastPrTitle: currentBlast?.pr_title,
               latency_ms: healthRec?.response_time_ms,
               baseline_latency_ms: healthRec?.baseline_latency_ms,
               rolling_latencies: healthRec?.rolling_latencies || [],
               error_rate: healthRec?.error_rate,
               consecutive_failures: healthRec?.consecutive_failures,
-              alertBadge: healthRec?.status === 'unavailable' || healthRec?.status === 'unhealthy',
+              alertBadge: isBlastTarget || isBlastImpacted || healthRec?.status === 'unavailable' || healthRec?.status === 'unhealthy',
             },
           };
         });
 
         const flowEdges: Edge[] = topoEdges.map((e: any, idx: number) => {
-          const isCritical = e.type === 'CALLS' && (e.source.includes('checkout') || e.target.includes('payment') || e.target.includes('prod-db') || e.source.includes('gateway'));
+          const isBlastPath = Boolean(
+            blastTarget && blastCallers.length > 0 &&
+            ((blastCallers.includes(String(e.source).toLowerCase()) && String(e.target).toLowerCase() === blastTarget) ||
+             (String(e.source).toLowerCase() === blastTarget && blastCallers.includes(String(e.target).toLowerCase())))
+          );
+
+          const isCritical = (e.type === 'CALLS' && (
+            e.source.includes('checkout') ||
+            e.target.includes('payment') ||
+            e.target.includes('prod-db') ||
+            e.source.includes('gateway') ||
+            e.source.includes('api-gateway')
+          )) || isBlastPath;
           const isContainment = e.type === 'CONTAINS' || e.type === 'HOSTED_ON';
+
+          const srcRec = healthMap.get(e.source);
+          const tgtRec = healthMap.get(e.target);
+          const srcHealth = srcRec ? srcRec.status : (isCritical ? 'healthy' : undefined);
+          const tgtHealth = tgtRec ? tgtRec.status : undefined;
+
+          const isCallOrDepends = e.type === 'CALLS' || e.type === 'DEPENDS_ON' || isBlastPath;
+          const isLive = isBlastPath || (isCallOrDepends && (srcHealth === 'healthy' || tgtHealth === 'healthy' || isCritical));
+          const status = isBlastPath
+            ? 'unavailable'
+            : (srcHealth === 'unavailable' || tgtHealth === 'unavailable')
+            ? 'unavailable'
+            : (srcHealth === 'degraded' || tgtHealth === 'degraded')
+            ? 'degraded'
+            : isLive
+            ? 'healthy'
+            : 'unconfigured';
 
           return {
             id: `edge-${idx}-${e.source}-${e.target}`,
             source: e.source,
             target: e.target,
-            className: isCritical ? 'edge-critical' : isContainment ? 'edge-containment' : 'edge-dependency',
-            animated: isCritical,
+            type: isContainment ? 'smoothstep' : 'liveBeatEdge',
+            className: isBlastPath ? 'edge-blast-path' : isCritical ? 'edge-critical' : isContainment ? 'edge-containment' : 'edge-dependency',
+            animated: isCritical || isBlastPath,
+            data: {
+              isLive,
+              isBlastPath,
+              status,
+              sourceHealth: isBlastPath ? 'degraded' : srcHealth,
+              targetHealth: isBlastPath ? 'unavailable' : tgtHealth,
+              isCritical,
+              label: isBlastPath ? 'BLAST FLOW' : e.type,
+            },
             style: {
-              stroke: isCritical ? '#f97316' : isContainment ? '#475569' : '#06b6d4',
-              strokeWidth: isCritical ? 2.5 : 1.5,
+              stroke: isBlastPath ? '#ef4444' : isCritical ? '#06b6d4' : isContainment ? '#475569' : '#10b981',
+              strokeWidth: isBlastPath ? 3.5 : isCritical ? 2.2 : 1.5,
               strokeDasharray: isContainment ? '5,5' : undefined,
             },
           };
@@ -202,6 +322,79 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
       setIsLoading(false);
     }
   }, [activeProjectId, setNodes, setEdges]);
+
+  const handleClearBlast = () => {
+    localStorage.removeItem('aegis_blast_context');
+    setBlastContext(null);
+    window.dispatchEvent(new CustomEvent('aegis_blast_context_changed', { detail: null }));
+
+    // Instant zero-latency visual reset of nodes and edges
+    setNodes((prevNodes) =>
+      prevNodes.map((n) => {
+        const isBlast = n.data?.isBlastTarget || n.data?.isBlastImpacted;
+        if (!isBlast) return n;
+        const known = knownMap[n.id];
+        const isCritical = (known && known.type === 'criticalNode') ||
+          n.id.includes('gateway') ||
+          n.id.includes('customer') ||
+          n.id.includes('checkout') ||
+          n.id.includes('payment');
+        return {
+          ...n,
+          type: isCritical ? 'criticalNode' : 'serviceNode',
+          data: {
+            ...n.data,
+            isBlastTarget: false,
+            isBlastImpacted: false,
+            blastVerdict: undefined,
+            blastRisk: undefined,
+            blastReason: undefined,
+            blastPrNumber: undefined,
+            blastPrTitle: undefined,
+            badge: isCritical ? 'CRITICAL' : undefined,
+            sublabel: ((n.data as any)?.raw?.properties?.name || (n.data as any)?.raw?.label || 'Microservice'),
+            healthStatus: 'healthy',
+            status: isCritical ? 'critical' : 'normal',
+            alertBadge: false,
+          },
+        };
+      })
+    );
+
+    setEdges((prevEdges) =>
+      prevEdges.map((e) => {
+        if (!e.data?.isBlastPath) return e;
+        const isCritical = e.data?.isCritical;
+        return {
+          ...e,
+          className: isCritical ? 'edge-critical' : 'edge-dependency',
+          data: {
+            ...e.data,
+            isBlastPath: false,
+            status: 'healthy',
+            label: 'CALLS',
+          },
+          style: {
+            ...e.style,
+            stroke: isCritical ? '#06b6d4' : '#10b981',
+            strokeWidth: isCritical ? 2.2 : 1.5,
+          },
+        };
+      })
+    );
+
+    loadTopology(activeProjectId, null);
+  };
+
+  useEffect(() => {
+    const onBlastChanged = (e: any) => {
+      const updated = e.detail !== undefined ? e.detail : getStoredBlastContext();
+      setBlastContext(updated);
+      loadTopology(activeProjectId, updated);
+    };
+    window.addEventListener('aegis_blast_context_changed', onBlastChanged);
+    return () => window.removeEventListener('aegis_blast_context_changed', onBlastChanged);
+  }, [loadTopology, activeProjectId]);
 
   useEffect(() => {
     loadTopology(activeProjectId);
@@ -269,6 +462,38 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             };
           }
           return n;
+        })
+      );
+
+      // Dynamically update connected edges with real-time live beat status
+      setEdges((prevEdges) =>
+        prevEdges.map((edge) => {
+          if (edge.source === serviceId || edge.target === serviceId) {
+            const edgeData = (edge.data || {}) as any;
+            const updatedSrcHealth = edge.source === serviceId ? payload.status : edgeData.sourceHealth;
+            const updatedTgtHealth = edge.target === serviceId ? payload.status : edgeData.targetHealth;
+            const isLive = updatedSrcHealth === 'healthy' || updatedTgtHealth === 'healthy' || edgeData.isCritical;
+            const status = (updatedSrcHealth === 'unavailable' || updatedTgtHealth === 'unavailable')
+              ? 'unavailable'
+              : (updatedSrcHealth === 'degraded' || updatedTgtHealth === 'degraded')
+              ? 'degraded'
+              : isLive
+              ? 'healthy'
+              : 'unconfigured';
+
+            return {
+              ...edge,
+              data: {
+                ...edgeData,
+                isLive,
+                status,
+                sourceHealth: updatedSrcHealth,
+                targetHealth: updatedTgtHealth,
+                pulseTrigger: (edgeData.pulseTrigger || 0) + 1,
+              },
+            };
+          }
+          return edge;
         })
       );
     };
@@ -373,7 +598,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
       if (resp.ok) {
         const data = await resp.json();
         setResetMessage(`Reset successfully: ${data.node_count} nodes, ${data.edge_count} edges.`);
-        await loadTopology(activeProjectId);
+        handleClearBlast();
       }
     } catch (e) {
       console.error('Reset baseline error:', e);
@@ -399,6 +624,13 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
         rolling_latencies: (activeFlowNode.data?.rolling_latencies as number[]) || [],
         error_rate: activeFlowNode.data?.error_rate as number | undefined,
         consecutive_failures: activeFlowNode.data?.consecutive_failures as number | undefined,
+        isBlastTarget: activeFlowNode.data?.isBlastTarget as boolean | undefined,
+        isBlastImpacted: activeFlowNode.data?.isBlastImpacted as boolean | undefined,
+        blastVerdict: activeFlowNode.data?.blastVerdict as string | undefined,
+        blastRisk: activeFlowNode.data?.blastRisk as number | undefined,
+        blastReason: activeFlowNode.data?.blastReason as string | undefined,
+        blastPrNumber: activeFlowNode.data?.blastPrNumber as number | undefined,
+        blastPrTitle: activeFlowNode.data?.blastPrTitle as string | undefined,
       }
     : null;
 
@@ -638,6 +870,46 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             <span>Reset Demo Baseline</span>
           </button>
 
+          {blastContext && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 10px',
+                borderRadius: 6,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#fca5a5',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              <Flame size={13} color="#ef4444" />
+              <span>PR #{blastContext.pr_number || '3'} Risk Blast</span>
+              <button
+                onClick={handleClearBlast}
+                title="Clear Blast Highlighting and return to normal view"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  background: 'rgba(239, 68, 68, 0.25)',
+                  border: '1px solid rgba(239, 68, 68, 0.6)',
+                  color: '#fee2e2',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  transition: 'background 0.2s',
+                }}
+              >
+                Clear (Normal View) ✕
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => loadTopology(activeProjectId)}
             disabled={isLoading}
@@ -658,6 +930,30 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             <Network size={12} color="#38bdf8" />
             <span>Refresh Graph</span>
           </button>
+
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 6,
+              background: isChatOpen
+                ? 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)'
+                : 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)',
+              border: `1px solid ${isChatOpen ? '#38bdf8' : 'rgba(6, 182, 212, 0.4)'}`,
+              color: isChatOpen ? '#ffffff' : '#38bdf8',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: isChatOpen ? '0 0 16px rgba(56, 189, 248, 0.4)' : 'none',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Sparkles size={13} color={isChatOpen ? '#ffffff' : '#38bdf8'} />
+            <span>{isChatOpen ? 'Close Copilot' : 'AI Copilot'}</span>
+          </button>
         </div>
       </div>
 
@@ -670,6 +966,7 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={{ padding: 0.18 }}
           minZoom={0.2}
@@ -779,6 +1076,63 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
 
             {/* Drawer Body */}
             <div style={{ padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Active PR Blast / Breaking Change Reason Alert */}
+              {(selectedNode.isBlastTarget || selectedNode.isBlastImpacted) && (
+                <div
+                  style={{
+                    padding: 14,
+                    borderRadius: 10,
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    border: '1.5px solid #ef4444',
+                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.25)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Flame size={16} color="#ef4444" />
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase' }}>
+                        {selectedNode.isBlastTarget ? '🎯 PR Target (Breaking Contract)' : '💥 Upstream Caller in Blast Radius'}
+                      </span>
+                    </div>
+                    {selectedNode.blastVerdict && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          backgroundColor: '#ef4444',
+                          color: '#fff',
+                        }}
+                      >
+                        {selectedNode.blastVerdict.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: 12, color: '#f8fafc', lineHeight: 1.5, fontWeight: 500 }}>
+                    {selectedNode.blastReason || (
+                      selectedNode.isBlastTarget
+                        ? `Breaking API contract diff detected in PR #${selectedNode.blastPrNumber || '3'}. Downstream consumers relying on removed fields will fail.`
+                        : `Direct upstream caller of modified service. Will experience deserialization crashes at runtime.`
+                    )}
+                  </div>
+
+                  {selectedNode.blastRisk !== undefined && (
+                    <div style={{ fontSize: 11, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <span>Predicted Risk Score:</span>
+                      <strong style={{ color: '#ef4444', fontSize: 13 }}>{Number(selectedNode.blastRisk).toFixed(1)} / 100</strong>
+                      {selectedNode.blastPrNumber && (
+                        <span style={{ color: '#94a3b8' }}>• Evaluated on PR #{selectedNode.blastPrNumber}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Live Telemetry Sparkline */}
               <div>
                 <div
@@ -968,6 +1322,58 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
             </div>
           </div>
         )}
+
+        {/* Floating Copilot Launcher Pill (Bottom-Right) */}
+        {!isChatOpen && (
+          <button
+            onClick={() => setIsChatOpen(true)}
+            style={{
+              position: 'absolute',
+              bottom: 24,
+              right: 24,
+              zIndex: 40,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 18px',
+              borderRadius: 30,
+              background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 700,
+              boxShadow: '0 8px 24px rgba(6, 182, 212, 0.45)',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 28px rgba(6, 182, 212, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(6, 182, 212, 0.45)';
+            }}
+          >
+            <Sparkles size={16} />
+            <span>AI Copilot</span>
+          </button>
+        )}
+
+        {/* AI Graph Copilot Drawer */}
+        <GraphChatDrawer
+          projectId={activeProjectId}
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          onTopologyUpdated={(_newNodes: any[], _newEdges: any[], focusNodeId?: string) => {
+            loadTopology(activeProjectId);
+            if (focusNodeId) {
+              setSelectedNodeId(focusNodeId);
+            }
+          }}
+          onSelectNode={(nodeId: string) => setSelectedNodeId(nodeId)}
+          activeNodeId={selectedNodeId}
+        />
       </div>
     </div>
   );

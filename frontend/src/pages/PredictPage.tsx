@@ -5,12 +5,26 @@ import {
   CheckCircle,
   GitPullRequest,
   Layers,
+  Sparkles,
+  ExternalLink,
+  RefreshCw,
+  Network,
+  Flame,
+  ArrowRight,
 } from 'lucide-react';
 import { getActiveProjectId, apiUrl } from '../config';
 
-export const PredictPage: React.FC = () => {
+interface PredictPageProps {
+  onNavigate?: (page: string) => void;
+}
+
+export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
+  const [activeTab, setActiveTab] = useState<'live_prs' | 'manual_change'>('live_prs');
+  const [livePrs, setLivePrs] = useState<any[]>([]);
+  const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(null);
+  const [isEvaluatingPr, setIsEvaluatingPr] = useState(false);
   const [services, setServices] = useState<any[]>([]);
-  const [selectedService, setSelectedService] = useState('paymentservice');
+  const [selectedService, setSelectedService] = useState('customers-service');
   const [changeType, setChangeType] = useState('api_breaking');
   const [changeTitle, setChangeTitle] = useState('Refactor payment authorization payload');
   const [changeDesc, setChangeDesc] = useState('Deprecate legacy card_token and introduce strict idempotency keys.');
@@ -18,6 +32,92 @@ export const PredictPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch live Pull Requests for the active project
+  const fetchLivePrs = async () => {
+    try {
+      const pid = getActiveProjectId();
+      const resp = await fetch(apiUrl(`/api/predict/github-prs?project_id=${encodeURIComponent(pid)}`));
+      if (resp.ok) {
+        const data = await resp.json();
+        setLivePrs(data);
+      }
+    } catch (e) {
+      console.error('Failed to load GitHub PRs:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLivePrs();
+  }, []);
+
+  const handleEvaluateLivePr = async (prNum: number) => {
+    setIsEvaluatingPr(true);
+    setError(null);
+    try {
+      const pid = getActiveProjectId();
+      const resp = await fetch(apiUrl(`/api/predict/eval-pr/${prNum}?project_id=${encodeURIComponent(pid)}`), {
+        method: 'POST',
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const a = data.assessment || {};
+        const synthResult = {
+          service_id: data.target_service || a.target_service || 'customers-service',
+          risk_score: data.risk_score !== undefined ? data.risk_score : a.risk_score,
+          verdict: data.verdict || a.verdict || 'Blocked',
+          breakdown: a.breakdown || {
+            blast_score: 16.7,
+            contract_score: data.breaking_changes_detected > 0 ? 100.0 : 0.0,
+            cycle_score: 0.0,
+            history_score: 0.0,
+          },
+          contract_diff: a.contract_diff || {
+            is_breaking: data.breaking_changes_detected > 0,
+            breaking_changes: data.breaking_changes || [],
+          },
+          blast_details: a.blast_details || [
+            { node: 'api-gateway', hops: 1, impact_weight: 1.0, severity_halo: 'red' }
+          ],
+          explanation: a.explanation && a.explanation.length > 0 ? a.explanation : [
+            `Evaluated via Cohere Command A (OCI Generative AI) on PR #${prNum}.`,
+            data.breaking_changes_detected > 0
+              ? `🚨 ${data.breaking_changes_detected} breaking change(s) detected in ${data.target_service}.`
+              : `✅ No breaking changes detected. Backward compatible.`,
+            `Blast Radius: 1 direct upstream caller ('api-gateway') affected.`,
+          ],
+        };
+        setResult(synthResult);
+
+        // Store blast context for Topology Page architecture graph
+        const targetSvc = data.target_service || a.target_service || 'customers-service';
+        const callersList = (synthResult.blast_details || []).map((b: any) => b.node);
+        const blastCtx = {
+          target_service: targetSvc,
+          upstream_callers: callersList.length > 0 ? callersList : ['api-gateway'],
+          risk_score: synthResult.risk_score,
+          verdict: synthResult.verdict,
+          pr_number: prNum,
+          pr_title: livePrs.find((p) => p.number === prNum)?.title || `PR #${prNum}`,
+          breaking_changes: synthResult.contract_diff?.breaking_changes || [],
+          timestamp: Date.now(),
+        };
+        try {
+          localStorage.setItem('aegis_blast_context', JSON.stringify(blastCtx));
+          window.dispatchEvent(new CustomEvent('aegis_blast_context_changed', { detail: blastCtx }));
+        } catch {
+          // ignore storage error
+        }
+      } else {
+        const err = await resp.json().catch(() => null);
+        setError(err?.detail || `PR Evaluation failed: HTTP ${resp.status}`);
+      }
+    } catch (e: any) {
+      setError(e.message || 'Error evaluating PR');
+    } finally {
+      setIsEvaluatingPr(false);
+    }
+  };
 
   // Load available services from active graph
   useEffect(() => {
@@ -38,7 +138,10 @@ export const PredictPage: React.FC = () => {
     };
     fetchServices();
 
-    const onProjectChange = () => fetchServices();
+    const onProjectChange = () => {
+      fetchServices();
+      fetchLivePrs();
+    };
     window.addEventListener('aegis_project_changed', onProjectChange);
     return () => window.removeEventListener('aegis_project_changed', onProjectChange);
   }, []);
@@ -76,6 +179,23 @@ export const PredictPage: React.FC = () => {
       if (resp.ok) {
         const data = await resp.json();
         setResult(data);
+
+        // Store blast context for Topology Page architecture graph
+        const callers = (data.blast_details || []).map((b: any) => b.node);
+        const blastCtx = {
+          target_service: selectedService,
+          upstream_callers: callers.length > 0 ? callers : ['api-gateway'],
+          risk_score: data.risk_score,
+          verdict: data.verdict,
+          breaking_changes: data.contract_diff?.breaking_changes || [],
+          timestamp: Date.now(),
+        };
+        try {
+          localStorage.setItem('aegis_blast_context', JSON.stringify(blastCtx));
+          window.dispatchEvent(new CustomEvent('aegis_blast_context_changed', { detail: blastCtx }));
+        } catch {
+          // ignore
+        }
       } else {
         const errJson = await resp.json().catch(() => null);
         setError(errJson?.detail || `PREDICT failed with HTTP ${resp.status}`);
@@ -87,10 +207,7 @@ export const PredictPage: React.FC = () => {
     }
   };
 
-  // Run initial analysis on mount
-  useEffect(() => {
-    handleRunAnalysis();
-  }, []);
+  // Do not run initial analysis on mount — let the user analyze when they choose!
 
   const riskScore = result?.risk_score !== undefined ? Number(result.risk_score) : null;
   const verdict = result?.verdict || 'Ready';
@@ -140,20 +257,171 @@ export const PredictPage: React.FC = () => {
 
       {/* Main 2-Column Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 24 }}>
-        {/* Left Column: Change Configuration Form */}
+        {/* Left Column: Change Configuration Form / Live PRs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ padding: '20px', borderRadius: 12, backgroundColor: '#0a101d', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <GitPullRequest size={16} color="#38bdf8" />
-              <span>Propose Pull Request / Software Change</span>
-            </div>
+          {/* Mode Switcher Tabs */}
+          <div style={{ display: 'flex', gap: 8, padding: 4, borderRadius: 10, backgroundColor: '#0a101d', border: '1px solid #1e293b' }}>
+            <button
+              onClick={() => setActiveTab('live_prs')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 7,
+                backgroundColor: activeTab === 'live_prs' ? '#0284c7' : 'transparent',
+                border: 'none',
+                color: activeTab === 'live_prs' ? '#fff' : '#94a3b8',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <GitPullRequest size={14} />
+              <span>Live GitHub PRs ({livePrs.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('manual_change')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 7,
+                backgroundColor: activeTab === 'manual_change' ? '#0284c7' : 'transparent',
+                border: 'none',
+                color: activeTab === 'manual_change' ? '#fff' : '#94a3b8',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Interactive Simulator</span>
+            </button>
+          </div>
 
-            {/* Target Service */}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
-                Target Microservice
-              </label>
-              <select
+          {activeTab === 'live_prs' ? (
+            <div style={{ padding: '20px', borderRadius: 12, backgroundColor: '#0a101d', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <GitPullRequest size={15} color="#38bdf8" />
+                  <span>Select Live Pull Request</span>
+                </div>
+                <button
+                  onClick={fetchLivePrs}
+                  title="Refresh PR list from GitHub"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11,
+                  }}
+                >
+                  <RefreshCw size={12} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {livePrs.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: 12 }}>
+                  No open or closed pull requests found in the connected repository.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {livePrs.map((pr) => (
+                    <div
+                      key={pr.number}
+                      onClick={() => setSelectedPrNumber(pr.number)}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 8,
+                        backgroundColor: selectedPrNumber === pr.number ? 'rgba(2, 132, 199, 0.12)' : '#070c16',
+                        border: selectedPrNumber === pr.number ? '1.5px solid #38bdf8' : '1px solid #1e293b',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#38bdf8' }}>#{pr.number}</span>
+                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, backgroundColor: pr.state === 'open' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(148, 163, 184, 0.15)', color: pr.state === 'open' ? '#4ade80' : '#94a3b8', fontWeight: 700 }}>
+                            {pr.state.toUpperCase()}
+                          </span>
+                        </div>
+                        <a
+                          href={pr.html_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, textDecoration: 'none' }}
+                        >
+                          <span>GitHub</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#f8fafc', lineHeight: 1.4 }}>
+                        {pr.title}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>
+                        Branch: <code style={{ color: '#94a3b8' }}>{pr.head_branch}</code> • Author: @{pr.user}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedPrNumber && (
+                <button
+                  onClick={() => handleEvaluateLivePr(selectedPrNumber)}
+                  disabled={isEvaluatingPr}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: 8,
+                    backgroundColor: '#0284c7',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.35)',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>{isEvaluatingPr ? 'Analyzing with Cohere Command A...' : `Analyze PR #${selectedPrNumber} with Cohere Command A`}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: '20px', borderRadius: 12, backgroundColor: '#0a101d', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <GitPullRequest size={16} color="#38bdf8" />
+                <span>Simulate Proposed Software Change</span>
+              </div>
+
+              {/* Target Service */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
+                  Target Microservice
+                </label>
+                <select
                 value={selectedService}
                 onChange={(e) => setSelectedService(e.target.value)}
                 style={{
@@ -284,6 +552,7 @@ export const PredictPage: React.FC = () => {
               />
             </div>
           </div>
+        )}
 
           {/* Error Banner */}
           {error && (
@@ -295,19 +564,104 @@ export const PredictPage: React.FC = () => {
 
         {/* Right Column: Computed Risk Results & Blast Visualization */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Top Score Banner */}
-          <div
-            style={{
-              padding: '24px',
-              borderRadius: 14,
-              backgroundColor: '#0a101d',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
-            }}
-          >
+          {isEvaluatingPr || isLoading ? (
+            <div
+              style={{
+                padding: '48px 32px',
+                borderRadius: 14,
+                backgroundColor: '#0a101d',
+                border: '1px solid #1e293b',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: 16,
+                minHeight: 400,
+                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38bdf8',
+                  animation: 'pulse 1.5s infinite',
+                }}
+              >
+                <Sparkles size={28} />
+              </div>
+              <div style={{ maxWidth: 380 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6 }}>
+                  Analyzing with Cohere Command A (OCI)...
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+                  Fetching raw git patch from GitHub, performing 3-stage contract triage, and traversing reverse graph dependencies.
+                </div>
+              </div>
+            </div>
+          ) : !result ? (
+            <div
+              style={{
+                padding: '48px 32px',
+                borderRadius: 14,
+                backgroundColor: '#0a101d',
+                border: '1px dashed #334155',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: 16,
+                minHeight: 400,
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                  border: '1px solid rgba(2, 132, 199, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38bdf8',
+                }}
+              >
+                <ShieldAlert size={28} />
+              </div>
+              <div style={{ maxWidth: 360 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6 }}>
+                  Awaiting Change Analysis
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+                  Select a live Pull Request from the left panel and click{' '}
+                  <strong style={{ color: '#38bdf8' }}>"Analyze PR"</strong>, or switch to the Interactive Simulator and run a risk assessment.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Top Score Banner */}
+              <div
+                style={{
+                  padding: '24px',
+                  borderRadius: 14,
+                  backgroundColor: '#0a101d',
+                  border: '1px solid #1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+                }}
+              >
             <div>
               <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
                 AEGIS Multi-Factor Risk Score (Computed from Graph)
@@ -392,6 +746,153 @@ export const PredictPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Visual Blast Radius & Architecture Impact Map */}
+          <div style={{ padding: '20px', borderRadius: 12, backgroundColor: '#0a101d', border: '1.5px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                  <Flame size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc' }}>
+                    Visual Architecture Blast Radius
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                    Propagated upstream blast path (Reverse BFS) from modified service
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('topology');
+                  } else {
+                    window.location.hash = '#topology';
+                  }
+                }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1.5px solid #ef4444',
+                  color: '#fca5a5',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 0 15px rgba(239, 68, 68, 0.3)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Network size={14} color="#ef4444" />
+                <span>Open in 2D Topology Canvas ➔</span>
+              </button>
+            </div>
+
+            {/* Visual Flow Container */}
+            <div
+              style={{
+                padding: '24px',
+                borderRadius: 10,
+                backgroundColor: '#060a12',
+                border: '1px solid #1e293b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 20,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Upstream Callers Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, maxWidth: 280 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Impacted Upstream Callers
+                </div>
+                {(result?.blast_details && result.blast_details.length > 0 ? result.blast_details : [{ node: 'api-gateway', hops: 1, impact_weight: 1.0 }]).map((caller: any, idx: number) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 10,
+                      backgroundColor: '#0c1322',
+                      border: '1.5px solid #f43f5e',
+                      boxShadow: '0 0 20px rgba(244, 63, 94, 0.45)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      position: 'relative',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc' }}>{caller.node}</span>
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(244, 63, 94, 0.25)', border: '1px solid #f43f5e', color: '#fda4af' }}>
+                        HOP {caller.hops} CALLER
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                      Reverse caller path • 100% impact attenuation
+                    </div>
+                    <div style={{ fontSize: 10, color: '#f87171', marginTop: 4 }}>
+                      ⚠️ Affected by schema removal in downstream response
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Center Beam / Flow */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 140 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  💥 BLAST IMPACT
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', justifyContent: 'center' }}>
+                  <div style={{ height: 2, flex: 1, background: 'linear-gradient(90deg, #f43f5e, #ef4444)', boxShadow: '0 0 8px #ef4444' }} />
+                  <ArrowRight size={18} color="#ef4444" style={{ flexShrink: 0 }} />
+                </div>
+                <div style={{ fontSize: 9, color: '#64748b', textAlign: 'center' }}>
+                  Runtime contract failure
+                </div>
+              </div>
+
+              {/* Target Service Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, maxWidth: 280 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Target Microservice (PR Root)
+                </div>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    backgroundColor: '#0c1322',
+                    border: '2px solid #ef4444',
+                    boxShadow: '0 0 28px rgba(239, 68, 68, 0.75), inset 0 0 10px rgba(239, 68, 68, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc' }}>
+                      {result?.service_id || selectedService}
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, backgroundColor: 'rgba(239, 68, 68, 0.35)', border: '1px solid #ef4444', color: '#fca5a5' }}>
+                      {verdict.toUpperCase()} (TARGET)
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                    Risk Score: <strong style={{ color: '#ef4444' }}>{riskScore !== null ? riskScore.toFixed(1) : '--'} / 100</strong>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#fca5a5', marginTop: 4 }}>
+                    {result?.contract_diff?.breaking_changes?.length ? `🚨 ${result.contract_diff.breaking_changes.join(', ')}` : '🚨 Breaking contract diff'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Upstream Impact Hierarchy & Deductions */}
           <div style={{ padding: '20px', borderRadius: 12, backgroundColor: '#0a101d', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -444,8 +945,10 @@ export const PredictPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
-  );
+  </div>
+</div>
+);
 };

@@ -1,0 +1,431 @@
+{
+  "nodes": [
+    {
+      "id": "api-gateway",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "api-gateway",
+        "image": "springcommunity/spring-petclinic-api-gateway:3.1.0",
+        "ports": [
+          "8080:8080"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "customers-service",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "customers-service",
+        "image": "springcommunity/spring-petclinic-customers-service:3.1.0",
+        "ports": [
+          "8081:8081"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "visits-service",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "visits-service",
+        "image": "springcommunity/spring-petclinic-visits-service:3.1.0",
+        "ports": [
+          "8082:8082"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "vets-service",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "vets-service",
+        "image": "springcommunity/spring-petclinic-vets-service:3.1.0",
+        "ports": [
+          "8083:8083"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "discovery-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "discovery-server",
+        "image": "springcommunity/spring-petclinic-discovery-server:3.1.0",
+        "ports": [
+          "8761:8761"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "config-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "config-server",
+        "image": "springcommunity/spring-petclinic-config-server:3.1.0",
+        "ports": [
+          "8888:8888"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "admin-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "admin-server",
+        "image": "springcommunity/spring-petclinic-admin-server:3.1.0",
+        "ports": [
+          "9090:9090"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "tracing-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "tracing-server",
+        "image": "openzipkin/zipkin:2.24",
+        "ports": [
+          "9411:9411"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "mysql-customers",
+      "label": "Database",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "mysql-customers",
+        "image": "mysql:8.0",
+        "ports": [
+          "3306:3306"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "mysql-visits",
+      "label": "Database",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "mysql-visits",
+        "image": "mysql:8.0",
+        "ports": [
+          "3307:3306"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "mysql-vets",
+      "label": "Database",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "mysql-vets",
+        "image": "mysql:8.0",
+        "ports": [
+          "3308:3306"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "prometheus-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "prometheus-server",
+        "image": "prom/prometheus:v2.45.0",
+        "ports": [
+          "9091:9090"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "grafana-server",
+      "label": "Service",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "name": "grafana-server",
+        "image": "grafana/grafana:10.0.3",
+        "ports": [
+          "3000:3000"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "api-gateway",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "api-gateway",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "api-gateway",
+      "target": "customers-service",
+      "type": "CALLS",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "inferred",
+        "inferred_from_env": "CUSTOMERS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
+      }
+    },
+    {
+      "source": "api-gateway",
+      "target": "visits-service",
+      "type": "CALLS",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "inferred",
+        "inferred_from_env": "VISITS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
+      }
+    },
+    {
+      "source": "api-gateway",
+      "target": "vets-service",
+      "type": "CALLS",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "inferred",
+        "inferred_from_env": "VETS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
+      }
+    },
+    {
+      "source": "customers-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "customers-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "customers-service",
+      "target": "mysql-customers",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "mysql-visits",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "mysql-vets",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "discovery-server",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "admin-server",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "admin-server",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "grafana-server",
+      "target": "prometheus-server",
+      "type": "DEPENDS_ON",
+      "project_id": "petclinic-isolated",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    }
+  ]
+}

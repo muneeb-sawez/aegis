@@ -1,35 +1,15 @@
 {
   "nodes": [
     {
-      "id": "config-server",
+      "id": "api-gateway",
       "label": "Service",
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "manifest",
-        "name": "config-server",
-        "image": "springcommunity/spring-petclinic-config-server",
+        "name": "api-gateway",
+        "image": "springcommunity/spring-petclinic-api-gateway:3.1.0",
         "ports": [
-          "8888:8888"
-        ],
-        "status": "healthy",
-        "baseline_p99_ms": 35.0,
-        "p99_ms": 35.0,
-        "error_rate": 0.001,
-        "technology": "Java / Spring Boot",
-        "language": "Java",
-        "framework": "Spring Cloud"
-      }
-    },
-    {
-      "id": "discovery-server",
-      "label": "Service",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "name": "discovery-server",
-        "image": "springcommunity/spring-petclinic-discovery-server",
-        "ports": [
-          "8761:8761"
+          "8080:8080"
         ],
         "status": "healthy",
         "baseline_p99_ms": 35.0,
@@ -47,7 +27,7 @@
       "properties": {
         "provenance": "manifest",
         "name": "customers-service",
-        "image": "springcommunity/spring-petclinic-customers-service",
+        "image": "springcommunity/spring-petclinic-customers-service:3.1.0",
         "ports": [
           "8081:8081"
         ],
@@ -67,7 +47,7 @@
       "properties": {
         "provenance": "manifest",
         "name": "visits-service",
-        "image": "springcommunity/spring-petclinic-visits-service",
+        "image": "springcommunity/spring-petclinic-visits-service:3.1.0",
         "ports": [
           "8082:8082"
         ],
@@ -87,7 +67,7 @@
       "properties": {
         "provenance": "manifest",
         "name": "vets-service",
-        "image": "springcommunity/spring-petclinic-vets-service",
+        "image": "springcommunity/spring-petclinic-vets-service:3.1.0",
         "ports": [
           "8083:8083"
         ],
@@ -101,15 +81,15 @@
       }
     },
     {
-      "id": "genai-service",
+      "id": "discovery-server",
       "label": "Service",
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "manifest",
-        "name": "genai-service",
-        "image": "springcommunity/spring-petclinic-genai-service",
+        "name": "discovery-server",
+        "image": "springcommunity/spring-petclinic-discovery-server:3.1.0",
         "ports": [
-          "8084:8084"
+          "8761:8761"
         ],
         "status": "healthy",
         "baseline_p99_ms": 35.0,
@@ -121,15 +101,35 @@
       }
     },
     {
-      "id": "api-gateway",
+      "id": "config-server",
       "label": "Service",
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "manifest",
-        "name": "api-gateway",
-        "image": "springcommunity/spring-petclinic-api-gateway",
+        "name": "config-server",
+        "image": "springcommunity/spring-petclinic-config-server:3.1.0",
         "ports": [
-          "8080:8080"
+          "8888:8888"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001,
+        "technology": "Java / Spring Boot",
+        "language": "Java",
+        "framework": "Spring Cloud"
+      }
+    },
+    {
+      "id": "admin-server",
+      "label": "Service",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "name": "admin-server",
+        "image": "springcommunity/spring-petclinic-admin-server:3.1.0",
+        "ports": [
+          "9090:9090"
         ],
         "status": "healthy",
         "baseline_p99_ms": 35.0,
@@ -147,7 +147,7 @@
       "properties": {
         "provenance": "manifest",
         "name": "tracing-server",
-        "image": "openzipkin/zipkin",
+        "image": "openzipkin/zipkin:2.24",
         "ports": [
           "9411:9411"
         ],
@@ -158,39 +158,53 @@
       }
     },
     {
-      "id": "admin-server",
-      "label": "Service",
+      "id": "mysql-customers",
+      "label": "Database",
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "manifest",
-        "name": "admin-server",
-        "image": "springcommunity/spring-petclinic-admin-server",
+        "name": "mysql-customers",
+        "image": "mysql:8.0",
         "ports": [
-          "9090:9090"
+          "3306:3306"
         ],
         "status": "healthy",
-        "baseline_p99_ms": 35.0,
-        "p99_ms": 35.0,
-        "error_rate": 0.001,
-        "technology": "Java / Spring Boot",
-        "language": "Java",
-        "framework": "Spring Cloud"
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
       }
     },
     {
-      "id": "grafana-server",
-      "label": "Service",
+      "id": "mysql-visits",
+      "label": "Database",
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "manifest",
-        "name": "grafana-server",
-        "image": "custom-build",
+        "name": "mysql-visits",
+        "image": "mysql:8.0",
         "ports": [
-          "3030:3000"
+          "3307:3306"
         ],
         "status": "healthy",
-        "baseline_p99_ms": 35.0,
-        "p99_ms": 35.0,
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "mysql-vets",
+      "label": "Database",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "name": "mysql-vets",
+        "image": "mysql:8.0",
+        "ports": [
+          "3308:3306"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 10.0,
+        "p99_ms": 10.0,
         "error_rate": 0.001
       }
     },
@@ -201,9 +215,26 @@
       "properties": {
         "provenance": "manifest",
         "name": "prometheus-server",
-        "image": "custom-build",
+        "image": "prom/prometheus:v2.45.0",
         "ports": [
           "9091:9090"
+        ],
+        "status": "healthy",
+        "baseline_p99_ms": 35.0,
+        "p99_ms": 35.0,
+        "error_rate": 0.001
+      }
+    },
+    {
+      "id": "grafana-server",
+      "label": "Service",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "name": "grafana-server",
+        "image": "grafana/grafana:10.0.3",
+        "ports": [
+          "3000:3000"
         ],
         "status": "healthy",
         "baseline_p99_ms": 35.0,
@@ -213,96 +244,6 @@
     }
   ],
   "edges": [
-    {
-      "source": "discovery-server",
-      "target": "config-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "customers-service",
-      "target": "config-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "customers-service",
-      "target": "discovery-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "visits-service",
-      "target": "config-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "visits-service",
-      "target": "discovery-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "vets-service",
-      "target": "config-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "vets-service",
-      "target": "discovery-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "genai-service",
-      "target": "config-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
-    {
-      "source": "genai-service",
-      "target": "discovery-server",
-      "type": "DEPENDS_ON",
-      "project_id": "spring-petclinic-microservices",
-      "properties": {
-        "provenance": "manifest",
-        "source_field": "depends_on"
-      }
-    },
     {
       "source": "api-gateway",
       "target": "config-server",
@@ -330,8 +271,8 @@
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "inferred",
-        "protocol": "HTTP/REST",
-        "inferred_route": "/api/customers-service"
+        "inferred_from_env": "CUSTOMERS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
       }
     },
     {
@@ -341,8 +282,8 @@
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "inferred",
-        "protocol": "HTTP/REST",
-        "inferred_route": "/api/visits-service"
+        "inferred_from_env": "VISITS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
       }
     },
     {
@@ -352,19 +293,108 @@
       "project_id": "spring-petclinic-microservices",
       "properties": {
         "provenance": "inferred",
-        "protocol": "HTTP/REST",
-        "inferred_route": "/api/vets-service"
+        "inferred_from_env": "VETS_SERVICE_URL",
+        "protocol": "HTTP/gRPC"
       }
     },
     {
-      "source": "api-gateway",
-      "target": "genai-service",
-      "type": "CALLS",
+      "source": "customers-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
       "project_id": "spring-petclinic-microservices",
       "properties": {
-        "provenance": "inferred",
-        "protocol": "HTTP/REST",
-        "inferred_route": "/api/genai-service"
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "customers-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "customers-service",
+      "target": "mysql-customers",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "visits-service",
+      "target": "mysql-visits",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "discovery-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "vets-service",
+      "target": "mysql-vets",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
+      }
+    },
+    {
+      "source": "discovery-server",
+      "target": "config-server",
+      "type": "DEPENDS_ON",
+      "project_id": "spring-petclinic-microservices",
+      "properties": {
+        "provenance": "manifest",
+        "source_field": "depends_on"
       }
     },
     {
@@ -390,13 +420,11 @@
     {
       "source": "grafana-server",
       "target": "prometheus-server",
-      "type": "CALLS",
+      "type": "DEPENDS_ON",
       "project_id": "spring-petclinic-microservices",
       "properties": {
-        "provenance": "inferred",
-        "protocol": "Stream/HTTP",
-        "relationship": "telemetry_stream",
-        "inferred_by": "observability_pattern"
+        "provenance": "manifest",
+        "source_field": "depends_on"
       }
     }
   ]

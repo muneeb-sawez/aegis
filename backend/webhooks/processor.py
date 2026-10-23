@@ -294,6 +294,10 @@ async def process_github_event(
         "breaking_changes_detected": len(breaking_changes),
         "llm_fallback_used": fallback_used,
         "files_analyzed": len(file_diffs),
+        "assessment": assessment_data,
+        "breaking_changes": breaking_changes,
+        "annotated_blast_paths": annotated_blast_paths,
+        "llm_reasoning": llm_reasoning,
     }
 
     # ── 8. Post enriched PR comment ────────────────────────────────────────────

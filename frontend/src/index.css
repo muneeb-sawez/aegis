@@ -135,6 +135,11 @@ body, html, #root {
   100% { transform: scale(0.9); opacity: 0.8; }
 }
 
+/* Live Traffic Beat Particles */
+.live-beat-particles circle {
+  pointer-events: none;
+}
+
 /* MiniMap Theme */
 .react-flow__minimap {
   background-color: rgba(9, 14, 24, 0.85) !important;

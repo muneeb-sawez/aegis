@@ -244,3 +244,86 @@ def get_pr_risk_comparison(pr_id: str = "PR-142", project_id: str = "demo") -> P
     )
 
 
+@router.get("/github-prs")
+async def list_github_pull_requests(project_id: str = "demo") -> list[dict[str, Any]]:
+    """Fetch live Pull Requests from the connected GitHub repository.
+
+    Reads the repo_full_name configured for project_id and calls GitHub API.
+    Returns PR list with number, title, author, branch, and status.
+    """
+    import httpx
+    from backend.auth.store import get_project_store
+    from backend.webhooks.git_diff_analyzer import resolve_github_token_for_project
+    from backend.config import settings
+
+    store = get_project_store()
+    project = store.get_project(project_id)
+    repo_full_name = getattr(project, "repo_full_name", None) or "FawazMulla/spring-petclinic-microservices"
+
+    token = resolve_github_token_for_project(project_id, repo_full_name, fallback_token=settings.GITHUB_TOKEN)
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "AEGIS-Control-Center/2.0",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    url = f"https://api.github.com/repos/{repo_full_name}/pulls"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers, params={"state": "all", "per_page": 20})
+            if resp.status_code == 200:
+                prs = resp.json()
+                return [
+                    {
+                        "number": p["number"],
+                        "title": p["title"],
+                        "state": p["state"],
+                        "head_branch": p.get("head", {}).get("ref", ""),
+                        "base_branch": p.get("base", {}).get("ref", ""),
+                        "user": p.get("user", {}).get("login", ""),
+                        "html_url": p.get("html_url", ""),
+                        "created_at": p.get("created_at", ""),
+                        "repo_full_name": repo_full_name,
+                    }
+                    for p in prs
+                ]
+    except Exception as exc:
+        pass
+    return []
+
+
+@router.post("/eval-pr/{pr_number}")
+async def evaluate_live_github_pr(pr_number: int, project_id: str = "demo") -> dict[str, Any]:
+    """Trigger live Cohere Command A evaluation on a specific GitHub Pull Request."""
+    from backend.webhooks.processor import process_github_event
+    from backend.auth.store import get_project_store
+
+    store = get_project_store()
+    project = store.get_project(project_id)
+    repo_full_name = getattr(project, "repo_full_name", None) or "FawazMulla/spring-petclinic-microservices"
+    owner, repo_name = repo_full_name.split("/", 1) if "/" in repo_full_name else ("FawazMulla", "spring-petclinic-microservices")
+
+    payload = {
+        "action": "synchronize",
+        "pull_request": {
+            "number": pr_number,
+            "title": f"Live Evaluation of PR #{pr_number}",
+        },
+        "repository": {
+            "full_name": repo_full_name,
+            "name": repo_name,
+            "owner": {"login": owner},
+        },
+    }
+
+    result = await process_github_event(
+        event_type="pull_request",
+        payload=payload,
+        delivery_id=f"live-ui-eval-pr-{pr_number}",
+        project_id=project_id,
+    )
+    return result
+
+
+
