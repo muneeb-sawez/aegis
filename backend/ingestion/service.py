@@ -123,20 +123,10 @@ async def ingest_repository_or_manifest(req: IngestionRequest) -> IngestionResul
             if not owner or not repo_name:
                 owner, repo_name = parse_github_repo_url(raw_repo_url)
             source_desc = f"GitHub: {owner}/{repo_name}"
-            try:
-                manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
-                    owner, repo_name, branch=req.branch, token=req.github_token
-                )
-                source_desc += f" ({manifest_filename})"
-            except Exception as e:
-                # Fallback to representative demo catalog if offline or repo lacks root compose manifest
-                logger.warning("Could not fetch manifest directly from GitHub (%s). Falling back to sample topology.", e)
-                fallback = SAMPLE_REPOSITORIES.get("shop-sphere/ecommerce-core")
-                if fallback:
-                    yaml_content = fallback["yaml"]
-                    source_desc = f"Demo Topology ({owner}/{repo_name})"
-                else:
-                    raise
+            manifest_filename, yaml_content = await find_and_fetch_compose_manifest(
+                owner, repo_name, branch=req.branch, token=req.github_token
+            )
+            source_desc += f" ({manifest_filename})"
 
 
     if not yaml_content:
