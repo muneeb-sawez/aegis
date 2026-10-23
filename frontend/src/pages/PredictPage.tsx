@@ -261,11 +261,12 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            cursor: 'pointer',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            opacity: isLoading ? 0.8 : 1,
             boxShadow: '0 4px 16px rgba(234, 88, 12, 0.35)',
           }}
         >
-          <Play size={15} fill="#fff" />
+          {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} fill="#fff" />}
           <span>{isLoading ? 'Computing Graph Blast...' : 'Run Risk Analysis'}</span>
         </button>
       </div>
@@ -411,7 +412,8 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
                     color: '#fff',
                     fontSize: 12,
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: isEvaluatingPr ? 'not-allowed' : 'pointer',
+                    opacity: isEvaluatingPr ? 0.8 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -419,7 +421,7 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
                     boxShadow: '0 4px 12px rgba(2, 132, 199, 0.35)',
                   }}
                 >
-                  <Sparkles size={14} />
+                  {isEvaluatingPr ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   <span>{isEvaluatingPr ? 'Analyzing with Cohere Command A...' : `Analyze PR #${selectedPrNumber} with Cohere Command A`}</span>
                 </button>
               )}
@@ -582,43 +584,162 @@ export const PredictPage: React.FC<PredictPageProps> = ({ onNavigate }) => {
           {isEvaluatingPr || isLoading ? (
             <div
               style={{
-                padding: '48px 32px',
+                padding: '40px 32px',
                 borderRadius: 14,
                 backgroundColor: '#0a101d',
-                border: '1px solid #1e293b',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
-                gap: 16,
-                minHeight: 400,
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+                gap: 20,
+                minHeight: 460,
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+                position: 'relative',
+                overflow: 'hidden',
               }}
             >
+              {/* Concentric Multi-Ring Radar Loader */}
               <div
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  position: 'relative',
+                  width: 96,
+                  height: 96,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#38bdf8',
-                  animation: 'pulse 1.5s infinite',
                 }}
               >
-                <Sparkles size={28} />
+                {/* Outer spinning ring */}
+                <div
+                  className="animate-spin-slow"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    border: '3px solid rgba(56, 189, 248, 0.15)',
+                    borderTopColor: '#38bdf8',
+                    borderRightColor: '#0284c7',
+                    boxShadow: '0 0 20px rgba(56, 189, 248, 0.35)',
+                  }}
+                />
+                {/* Middle counter-spinning ring */}
+                <div
+                  className="animate-spin-reverse"
+                  style={{
+                    position: 'absolute',
+                    inset: 12,
+                    borderRadius: '50%',
+                    border: '2px dashed rgba(168, 85, 247, 0.45)',
+                    borderBottomColor: '#a855f7',
+                  }}
+                />
+                {/* Center glowing radar hub */}
+                <div
+                  className="animate-radar"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Sparkles size={24} color="#38bdf8" />
+                </div>
               </div>
-              <div style={{ maxWidth: 380 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6 }}>
+
+              {/* Title & Description */}
+              <div style={{ maxWidth: 440 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', marginBottom: 6 }}>
                   Analyzing with Cohere Command A (OCI)...
                 </div>
                 <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
-                  Fetching raw git patch from GitHub, performing 3-stage contract triage, and traversing reverse graph dependencies.
+                  Parsing git patch AST diff, running AI contract triage, and evaluating reverse graph dependencies.
                 </div>
+              </div>
+
+              {/* Shimmer Progress Line */}
+              <div
+                style={{
+                  width: 320,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#1e293b',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent)',
+                    animation: 'shimmer 1.8s infinite linear',
+                    backgroundSize: '200% 100%',
+                  }}
+                />
+              </div>
+
+              {/* Live Multi-Stage Pipeline Indicator */}
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 440,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  backgroundColor: '#070c16',
+                  padding: '14px 18px',
+                  borderRadius: 10,
+                  border: '1px solid #1e293b',
+                  textAlign: 'left',
+                }}
+              >
+                {[
+                  { id: 0, label: 'Fetching raw patch diff from GitHub Pull Request' },
+                  { id: 1, label: 'OCI Cohere Command A model parsing AST contract diffs' },
+                  { id: 2, label: 'Traversing reverse topological dependency graph for upstream callers' },
+                  { id: 3, label: 'Computing multi-factor risk formula (0.35B + 0.30C + 0.15D + 0.20H)' },
+                ].map((step) => {
+                  const isDone = evalStep > step.id;
+                  const isCurrent = evalStep === step.id;
+                  return (
+                    <div
+                      key={step.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        fontSize: 11,
+                        color: isCurrent ? '#38bdf8' : isDone ? '#10b981' : '#64748b',
+                        fontWeight: isCurrent ? 700 : isDone ? 600 : 500,
+                        transition: 'all 0.25s ease',
+                      }}
+                    >
+                      {isDone ? (
+                        <CheckCircle size={14} color="#10b981" />
+                      ) : isCurrent ? (
+                        <Loader2 size={14} className="animate-spin" color="#38bdf8" />
+                      ) : (
+                        <span
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            border: '1px solid #334155',
+                            display: 'inline-block',
+                          }}
+                        />
+                      )}
+                      <span>{step.label}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : !result ? (
