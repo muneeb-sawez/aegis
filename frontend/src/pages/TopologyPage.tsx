@@ -20,6 +20,7 @@ import {
   Flame,
   KeyRound,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import {
   CriticalNode,
@@ -924,11 +925,12 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
               color: '#f8fafc',
               fontSize: 12,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.75 : 1,
             }}
           >
-            <Network size={12} color="#38bdf8" />
-            <span>Refresh Graph</span>
+            {isLoading ? <Loader2 size={12} className="animate-spin" color="#38bdf8" /> : <Network size={12} color="#38bdf8" />}
+            <span>{isLoading ? 'Loading Graph...' : 'Refresh Graph'}</span>
           </button>
 
           <button
@@ -959,6 +961,110 @@ export const TopologyPage: React.FC<TopologyPageProps> = ({ onNavigate }) => {
 
       {/* Main Graph Canvas Area */}
       <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', backgroundColor: '#060a12' }}>
+        {/* Visual Graph Loading Overlay */}
+        {isLoading && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 35,
+              backgroundColor: 'rgba(6, 10, 18, 0.78)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 20,
+              pointerEvents: 'all',
+            }}
+          >
+            {/* Concentric Multi-Ring Radar Loader */}
+            <div
+              style={{
+                position: 'relative',
+                width: 96,
+                height: 96,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {/* Outer spinning ring */}
+              <div
+                className="animate-spin-slow"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  border: '3px solid rgba(56, 189, 248, 0.15)',
+                  borderTopColor: '#38bdf8',
+                  borderRightColor: '#0284c7',
+                  boxShadow: '0 0 24px rgba(56, 189, 248, 0.35)',
+                }}
+              />
+              {/* Middle counter-spinning ring */}
+              <div
+                className="animate-spin-reverse"
+                style={{
+                  position: 'absolute',
+                  inset: 12,
+                  borderRadius: '50%',
+                  border: '2px dashed rgba(6, 182, 212, 0.45)',
+                  borderBottomColor: '#06b6d4',
+                }}
+              />
+              {/* Center glowing network hub */}
+              <div
+                className="animate-radar"
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Network size={24} color="#38bdf8" />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', maxWidth: 380 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6 }}>
+                Loading Architecture Topology...
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 14 }}>
+                Synthesizing microservices, dependencies, and live telemetry for{' '}
+                <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{activeProjectId}</strong>
+              </div>
+
+              {/* Shimmer progress bar */}
+              <div
+                style={{
+                  width: 240,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#1e293b',
+                  overflow: 'hidden',
+                  margin: '0 auto',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, transparent, #38bdf8, #06b6d4, transparent)',
+                    animation: 'shimmer 1.6s infinite linear',
+                    backgroundSize: '200% 100%',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
         <ReactFlow
           nodes={filteredNodes}
           edges={edges}
