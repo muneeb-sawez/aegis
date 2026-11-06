@@ -23,6 +23,8 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any
+from backend.executor.k8s_client import k8s_client
+
 
 logger = logging.getLogger(__name__)
 
@@ -213,12 +215,22 @@ async def apply_fix(
 
         # SAFETY CHECK 7: Sign the request body with HMAC-SHA256.
         sig = _sign_payload(body, secret)
-
         if base_url:
             timeout = float(os.environ.get("ACTUATOR_TIMEOUT_SEC", "5.0"))
             result = _call_target_real(base_url, service_id, action, params, secret, timeout)
+        elif os.environ.get("USE_KUBERNETES") == "true":
+            namespace = os.environ.get("KUBERNETES_NAMESPACE", "default")
+            if action == "restart":
+                result = k8s_client.restart_deployment(namespace, service_id)
+            elif action == "scale_pool":
+                replicas = params.get("pool_size", 1)
+                result = k8s_client.scale_deployment(namespace, service_id, replicas)
+            else:
+                result = _call_target_emulated(service_id, action, params, sig)
+            result["emulated"] = False
         else:
             result = _call_target_emulated(service_id, action, params, sig)
+
 
         # Augment result with request metadata for audit trail
         result["request"] = {

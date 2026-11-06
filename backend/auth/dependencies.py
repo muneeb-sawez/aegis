@@ -13,6 +13,8 @@ from fastapi import Header, HTTPException, Query, Request
 
 from backend.auth.store import ProjectRecord, get_project_store
 from backend.config import settings
+from backend.auth.jwt_handler import decode_jwt_token
+
 
 
 def extract_raw_api_key(
@@ -91,9 +93,40 @@ async def require_api_key(
         except Exception:
             pass
 
-    # 4. Validate against persistent store (SHA-256 hash comparison)
+
+
+    # 4. JWT Support
+    jwt_payload = decode_jwt_token(raw_key)
+    if jwt_payload and 'username' in jwt_payload:
+        effective_project = target_project or "demo"
+        return ProjectRecord(
+            project_id=effective_project,
+            name=f"JWT User: {jwt_payload.get('username')}",
+            description="Authenticated via JWT Token",
+            key_hash="",
+            created_at="system",
+        )
+
+    # 4b. Support GitHub User Login Token (aegis_usr_*)
+    from backend.auth.github_store import get_github_auth_store
+    gh_store = get_github_auth_store()
+    session = gh_store.get_session_by_token(raw_key)
+    if session:
+        effective_project = target_project or "demo"
+        if not target_project or effective_project in session.connected_projects or effective_project == "demo":
+            return ProjectRecord(
+                project_id=effective_project,
+                name=f"GitHub: {session.user.name or session.user.username}",
+                description=f"Authenticated via GitHub login token for @{session.user.username}",
+                key_hash="",
+                created_at=session.created_at,
+            )
+
+    # 5. Validate against persistent store (SHA-256 hash comparison)
     store = get_project_store()
     project = store.validate_key(raw_key, project_id=target_project)
+
+
 
     # 4b. Support GitHub User Login Token (aegis_usr_*)
     if not project and raw_key.startswith("aegis_usr_"):

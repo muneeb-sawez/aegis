@@ -15,6 +15,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from backend.auth.jwt_handler import create_jwt_token
+from backend.auth.jwt_handler import decode_jwt_token
 from backend.auth.github_service import (
     GitHubAuthError,
     build_github_oauth_url,
@@ -161,13 +163,17 @@ async def authenticate_github(req: GitHubAuthRequest) -> LoginTokenResponse:
             detail="Must provide an OAuth authorization 'code', a direct GitHub 'token', or set 'demo_login': true.",
         )
 
+
     # 4. Issue Login Token & Link to Project
     login_resp = store.create_or_update_session(
         user=user_profile,
         project_id=req.project_id,
         github_access_token=effective_github_token,
     )
+    jwt_token = create_jwt_token({"username": user_profile.username, "token": login_resp.login_token})
+    login_resp.login_token = jwt_token
     return login_resp
+
 
 
 @router.get("/repos", response_model=list[GitHubRepoSummary])
@@ -196,9 +202,12 @@ def get_current_user_profile(
             status_code=401,
             detail="Missing user login token. Provide 'Authorization: Bearer <token>' or 'X-Login-Token' header.",
         )
+    jwt_payload = decode_jwt_token(token)
+    real_token = jwt_payload.get("token") if jwt_payload else token
 
     store = get_github_auth_store()
-    session = store.get_session_by_token(token)
+    session = store.get_session_by_token(real_token)
+
     if not session:
         raise HTTPException(status_code=401, detail="Invalid, expired, or revoked login token.")
 
@@ -227,9 +236,12 @@ def connect_project_to_active_user(
     """Connect an existing project to the authenticated GitHub user."""
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required to connect project to GitHub.")
+    jwt_payload = decode_jwt_token(token)
+    real_token = jwt_payload.get("token") if jwt_payload else token
 
     store = get_github_auth_store()
-    session = store.get_session_by_token(token)
+    session = store.get_session_by_token(real_token)
+
     if not session:
         raise HTTPException(status_code=401, detail="Invalid login token.")
 

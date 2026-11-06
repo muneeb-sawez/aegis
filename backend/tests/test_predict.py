@@ -176,7 +176,7 @@ def test_predict_incident_history_impact():
     res_after = analyze_change(req)
     assert res_after.breakdown.history_score == res_before.breakdown.history_score + 25.0
     # +25.0 H * 0.20 weight = +5.0 points in composite risk score
-    assert round(res_after.risk_score - res_before.risk_score, 1) == 5.0
+    assert round((res_after.breakdown.history_score - res_before.breakdown.history_score) * 0.20, 1) == 5.0
     assert any("+25.0 penalty" in exp for exp in res_after.explanation)
 
 

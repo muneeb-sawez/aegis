@@ -273,7 +273,7 @@ export function App() {
         style={{
           height: 52,
           backgroundColor: '#090e1a',
-          borderBottom: '1px solid #1e293b',
+          borderBottom: '1px solid rgba(56, 189, 248, 0.15)', boxShadow: '0 4px 30px rgba(0, 0, 0, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -453,7 +453,7 @@ export function App() {
         <aside
           style={{
             width: isSidebarCollapsed ? 56 : 230,
-            backgroundColor: '#070c17',
+            backgroundColor: 'var(--bg-sidebar)', backdropFilter: 'blur(10px)',
             borderRight: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
@@ -534,7 +534,7 @@ export function App() {
               style={{
                 padding: '10px 12px',
                 borderRadius: 8,
-                backgroundColor: '#0a101d',
+                backgroundColor: 'rgba(10, 16, 29, 0.8)',
                 border: '1px solid #1e293b',
                 display: 'flex',
                 alignItems: 'center',

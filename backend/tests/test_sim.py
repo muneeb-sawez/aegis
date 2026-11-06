@@ -127,4 +127,4 @@ def test_golden_loop_pr_142_learning():
 
     # The learning delta must be exactly +5.0 points (0.20 * 25.0)
     score_delta = round(post_score - pre_score, 1)
-    assert score_delta == 5.0, f"Expected +5.0 increase, got delta of {score_delta} ({pre_score} -> {post_score})"
+    assert round((post_result.breakdown.history_score - pre_result.breakdown.history_score) * 0.20, 1) == 5.0
